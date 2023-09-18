@@ -12,6 +12,9 @@ export default class World
         this.time = this.application.time
         this.debug = this.application.debug
 
+        // Discord question
+        // this.camera = this.application.camera
+
         // Setup
         this.textures = {}
         this.models = {}
@@ -22,50 +25,27 @@ export default class World
             this.setFloor()
             this.setFridge()
             this.environment = new Environment()
-        })
 
-        // Debug
-        if(this.debug.active)
-        {
-            this.debugFridge = this.debug.ui.addFolder('fridge')
+            // Discord question
+            // if(this.models.fridge)
+            // {
+            //     this.camera.target = this.models.fridge.model.position
+            // }
 
-            const debugObject = {
-                changeToClassic: () => {
-                    this.models.fridge.model.traverse((child) =>
-                    {
-                        if(child instanceof THREE.Mesh)
-                        {  
-                            if(child.name.includes("Classic"))
-                            {
-                                child.visible = true
-                            }
-                            else if(child.name.includes("Custom"))
-                            {
-                                child.visible = false
-                            }
-                        }
-                    })
-                },
-                changeToCustom: () => {
-                    this.models.fridge.model.traverse((child) =>
-                    {
-                        if(child instanceof THREE.Mesh)
-                        {  
-                            if(child.name.includes("Classic"))
-                            {
-                                child.visible = false
-                            }
-                            else if(child.name.includes("Custom"))
-                            {
-                                child.visible = true
-                            }
-                        }
-                    })
+            // Debug
+            if(this.debug.active)
+            {
+                this.debugFridge = this.debug.ui.addFolder('fridge')
+
+                const debugObject = {
+                    changeToClassic: () => {this.changeAssets('classic')},
+                    changeToCustom: () => {this.changeAssets('custom')}
                 }
+
+                this.debugFridge.add(debugObject, 'changeToClassic').name('Poignées classique')
+                this.debugFridge.add(debugObject, 'changeToCustom').name('Poignées customisées')
             }
-            this.debugFridge.add(debugObject, 'changeToClassic')
-            this.debugFridge.add(debugObject, 'changeToCustom')
-        }
+        })
     }
 
     setFloor()
@@ -102,22 +82,40 @@ export default class World
         // Model
         this.models.fridge = {}
         this.models.fridge.model = this.resources.items.fridgeModel.scene
+        console.log(this.models.fridge.model)
 
-        // Add and options
-        // this.models.fridge.model.scale.set(0.02, 0.02, 0.02)
+        // Options
         this.models.fridge.model.traverse((child) =>
         {
             if(child instanceof THREE.Mesh)
             {
                 child.castShadow = true
-                
-                if(child.name.includes("Custom"))
-                {
-                    child.visible = false
-                }
             }
         })
+
+        // Set to classic
+        this.changeAssets('classic')
+
+        // Add
         this.scene.add(this.models.fridge.model)
+    }
+
+    changeAssets(asset)
+    {
+        this.models.fridge.model.traverse((child) =>
+        {
+            // Set all customisable elements visibility to false
+            if(child.userData.customisable)
+            {
+                child.visible = false
+            }
+
+            // Set all the custom visibility we want to true
+            if(child.userData[asset])
+            {
+                child.visible = true
+            }
+        })
     }
 
     update()

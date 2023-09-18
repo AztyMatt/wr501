@@ -11,6 +11,9 @@ export default class Camera
         this.scene = this.application.scene
         this.canvas = this.application.canvas
 
+        // Discord question
+        // this.target = new THREE.Vector3()
+
         this.setInstance()
         this.setOrbitControls()
     }
@@ -44,5 +47,11 @@ export default class Camera
     update()
     {
         this.controls.update()
+
+        // Discord question
+        // if(this.target)
+        // {
+        //     this.instance.lookAt(this.target)
+        // }
     }
 }
