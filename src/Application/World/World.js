@@ -20,6 +20,8 @@ export default class World
         this.models = {}
         this.animation = {}
 
+        this.allMaterials = new Set()
+
         this.resources.on('readyEvent', () =>
         {
             this.setFloor()
@@ -82,7 +84,6 @@ export default class World
         // Model
         this.models.fridge = {}
         this.models.fridge.model = this.resources.items.fridgeModel.scene
-        console.log(this.models.fridge.model)
 
         // Options
         this.models.fridge.model.traverse((child) =>
@@ -93,6 +94,8 @@ export default class World
             }
         })
 
+        this.retrieveAllMaterials()
+
         // Set to classic
         this.changeAssets('classic')
 
@@ -100,20 +103,34 @@ export default class World
         this.scene.add(this.models.fridge.model)
     }
 
+    retrieveAllMaterials()
+    {
+        this.models.fridge.model.traverse((child) =>
+        {
+            if(child.isMesh && child.material.isMeshStandardMaterial)
+            {
+                this.allMaterials.add(child.material)
+            }
+        })
+        
+        console.log([...this.allMaterials][4])
+    }
+
     changeAssets(asset)
     {
         this.models.fridge.model.traverse((child) =>
         {
-            // Set all customisable elements visibility to false
+            // Set visibility of all customisable elements to false
             if(child.userData.customisable)
             {
                 child.visible = false
             }
 
-            // Set all the custom visibility we want to true
+            // Set visibility of the customisation we want to true
             if(child.userData[asset])
             {
                 child.visible = true
+                child.material = [...this.allMaterials][4]
             }
         })
     }
