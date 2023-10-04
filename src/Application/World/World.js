@@ -37,10 +37,11 @@ export default class World
             // }
 
             this.allMaterialsRetrieved.forEach(material => {
-                console.log(material.name)
+                this.allMaterials[material.name] = material
             })
 
             console.log([...this.allMaterialsRetrieved])
+            console.log(this.allMaterials)
 
             // Debug
             if(this.debug.active)
@@ -50,12 +51,12 @@ export default class World
                 const debugObject = {
                     changeToClassic: () => {this.changeAssets('classic')},
                     changeToCustom: () => {this.changeAssets('custom')},
-                    changeToCustomWhite: () => {this.changeAssets('custom', 4)}
+                    changeToCustomWhite: () => {this.changeAssets('custom', 'plastic - black')}
                 }
 
                 this.debugFridge.add(debugObject, 'changeToClassic').name('Poignées classique')
                 this.debugFridge.add(debugObject, 'changeToCustom').name('Poignées customisées')
-                this.debugFridge.add(debugObject, 'changeToCustomWhite').name('Poignées customisées blanche')
+                this.debugFridge.add(debugObject, 'changeToCustomWhite').name('Poignées customisées noires')
             }
         })
     }
@@ -104,7 +105,7 @@ export default class World
             }
         })
 
-        this.retrieveallMaterialsRetrieved()
+        this.retrieveAllMaterials()
 
         // Set to classic
         this.changeAssets('classic')
@@ -113,7 +114,7 @@ export default class World
         this.scene.add(this.models.fridge.model)
     }
 
-    retrieveallMaterialsRetrieved()
+    retrieveAllMaterials()
     {
         this.models.fridge.model.traverse((child) =>
         {
@@ -145,7 +146,7 @@ export default class World
                 child.visible = true
                 child.material = this.defaultMaterial
                  if(material){
-                    child.material = [...this.allMaterialsRetrieved][material]
+                    child.material = this.allMaterials[material]
                 }
             }
         })
