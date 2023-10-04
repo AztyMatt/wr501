@@ -20,7 +20,9 @@ export default class World
         this.models = {}
         this.animation = {}
 
-        this.allMaterials = new Set()
+        this.allMaterialsRetrieved = new Set()
+        this.allMaterials = {}
+        this.defaultMaterial = null
 
         this.resources.on('readyEvent', () =>
         {
@@ -34,6 +36,12 @@ export default class World
             //     this.camera.target = this.models.fridge.model.position
             // }
 
+            this.allMaterialsRetrieved.forEach(material => {
+                console.log(material.name)
+            })
+
+            console.log([...this.allMaterialsRetrieved])
+
             // Debug
             if(this.debug.active)
             {
@@ -41,11 +49,13 @@ export default class World
 
                 const debugObject = {
                     changeToClassic: () => {this.changeAssets('classic')},
-                    changeToCustom: () => {this.changeAssets('custom')}
+                    changeToCustom: () => {this.changeAssets('custom')},
+                    changeToCustomWhite: () => {this.changeAssets('custom', 4)}
                 }
 
                 this.debugFridge.add(debugObject, 'changeToClassic').name('Poignées classique')
                 this.debugFridge.add(debugObject, 'changeToCustom').name('Poignées customisées')
+                this.debugFridge.add(debugObject, 'changeToCustomWhite').name('Poignées customisées blanche')
             }
         })
     }
@@ -94,7 +104,7 @@ export default class World
             }
         })
 
-        this.retrieveAllMaterials()
+        this.retrieveallMaterialsRetrieved()
 
         // Set to classic
         this.changeAssets('classic')
@@ -103,20 +113,18 @@ export default class World
         this.scene.add(this.models.fridge.model)
     }
 
-    retrieveAllMaterials()
+    retrieveallMaterialsRetrieved()
     {
         this.models.fridge.model.traverse((child) =>
         {
             if(child.isMesh && child.material.isMeshStandardMaterial)
             {
-                this.allMaterials.add(child.material)
+                this.allMaterialsRetrieved.add(child.material)
             }
         })
-        
-        console.log([...this.allMaterials][4])
     }
 
-    changeAssets(asset)
+    changeAssets(asset, material)
     {
         this.models.fridge.model.traverse((child) =>
         {
@@ -126,11 +134,19 @@ export default class World
                 child.visible = false
             }
 
-            // Set visibility of the customisation we want to true
+            // Set visibility of the customisation we want to true and change the material if it's specified
             if(child.userData[asset])
             {
+                if(!this.defaultMaterial)
+                {
+                    this.defaultMaterial = child.material
+                }
+
                 child.visible = true
-                child.material = [...this.allMaterials][4]
+                child.material = this.defaultMaterial
+                 if(material){
+                    child.material = [...this.allMaterialsRetrieved][material]
+                }
             }
         })
     }
@@ -139,4 +155,4 @@ export default class World
     {
 
     }
-}
+} 
