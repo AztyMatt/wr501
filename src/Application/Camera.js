@@ -36,10 +36,10 @@ export default class Camera
         this.controls = new OrbitControls(this.instance, this.canvas)
         this.controls.target = new THREE.Vector3(0, 0.85, 0)
 
-        this.controls.maxAzimuthAngle = 2.5
-        this.controls.minAzimuthAngle = 0.7
-        this.controls.maxPolarAngle = 1.4
-        this.controls.minPolarAngle = 1.0
+        // this.controls.maxAzimuthAngle = 2.5
+        // this.controls.minAzimuthAngle = 0.7
+        // this.controls.maxPolarAngle = 1.4
+        // this.controls.minPolarAngle = 1.0
 
 
         this.controls.enableDamping = true

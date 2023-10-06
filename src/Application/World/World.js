@@ -20,6 +20,9 @@ export default class World
         this.models = {}
         this.animation = {}
 
+        // this.handlesPosRot = {} // Method 2
+        // this.activeHandles = [] // Method 2
+
         this.allMaterialsRetrieved = new Set()
         this.allMaterials = {}
         this.defaultMaterial = null
@@ -36,23 +39,23 @@ export default class World
             //     this.camera.target = this.models.fridge.model.position
             // }
 
-            this.allMaterialsRetrieved.forEach(material => {
-                this.allMaterials[material.name] = material
-            })
-
-            console.log([...this.allMaterialsRetrieved])
-            console.log(this.allMaterials)
-
             // Debug
             if(this.debug.active)
             {
                 this.debugFridge = this.debug.ui.addFolder('fridge')
 
                 const debugObject = {
-                    changeToClassic: () => {this.changeAssets('classic')},
-                    changeToCustom: () => {this.changeAssets('custom')},
-                    changeToCustomWhite: () => {this.changeAssets('custom', 'plastic - black')}
+                    changeToClassic: () => {this.setHandleByVisibility('classic')},
+                    changeToCustom: () => {this.setHandleByVisibility('custom')},
+                    changeToCustomWhite: () => {this.setHandleByVisibility('custom', 'plastic - black')}
                 }
+
+                // // Method 2
+                // const debugObject = {
+                //     changeToClassic: () => {this.setHandleByIteration('classicHandle')},
+                //     changeToCustom: () => {this.setHandleByIteration('customHandle')},
+                //     changeToCustomWhite: () => {this.setHandleByIteration('customHandle', 'plastic - black')}
+                // }
 
                 this.debugFridge.add(debugObject, 'changeToClassic').name('Poignées classique')
                 this.debugFridge.add(debugObject, 'changeToCustom').name('Poignées customisées')
@@ -69,12 +72,14 @@ export default class World
         this.textures.floor.color.colorSpace = THREE.SRGBColorSpace
         this.textures.floor.normal = this.resources.items.floorNormalTexture
 
-        Object.values(this.textures.floor).forEach(texture => 
+        for(const key in this.textures.floor)
         {
-            texture.repeat.set(1.5, 1.5)
-            texture.wrapS = THREE.RepeatWrapping
-            texture.wrapT = THREE.RepeatWrapping
-        })
+            const value = this.textures.floor[key]
+
+            value.repeat.set(1.5, 1.5)
+            value.wrapS = THREE.RepeatWrapping
+            value.wrapT = THREE.RepeatWrapping
+        }
 
         // Model
         const floorGeometry = new THREE.CircleGeometry(5, 64)
@@ -105,10 +110,13 @@ export default class World
             }
         })
 
+        // RetrieveElements
         this.retrieveAllMaterials()
+        // this.retrieveHandlesPosRot() // Method 2
 
         // Set to classic
-        this.changeAssets('classic')
+        this.setHandleByVisibility('classic')
+        // this.setHandleByIteration('classicHandle', 'chrome') // Method 2
 
         // Add
         this.scene.add(this.models.fridge.model)
@@ -123,9 +131,19 @@ export default class World
                 this.allMaterialsRetrieved.add(child.material)
             }
         })
+
+        this.allMaterialsRetrieved.forEach(material => {
+            this.allMaterials[material.name] = material
+        })
     }
 
-    changeAssets(asset, material)
+    //--------------------------------------------------------------------------------//
+
+    /**
+     * Method 1
+     */
+
+    setHandleByVisibility(asset, material)
     {
         this.models.fridge.model.traverse((child) =>
         {
@@ -144,12 +162,73 @@ export default class World
                 }
 
                 child.visible = true
-                child.material = this.defaultMaterial
-                 if(material){
+                if(material){
                     child.material = this.allMaterials[material]
+                }else{
+                    child.material = this.defaultMaterial
                 }
             }
         })
+    }
+
+    //--------------------------------------------------------------------------------//
+
+    /**
+     * Method 2
+     */
+
+    retrieveHandlesPosRot()
+    {
+        this.models.fridge.model.traverse((child) =>
+        {
+            if(child.userData['handlePosRot'])
+            {
+                this.handlesPosRot[child.name] = [child.position, child.rotation]         
+            }
+        })
+    }
+
+    setHandleByIteration(asset, material)
+    {
+        // Remove 
+        for (const oldHandle of this.activeHandles) {
+            const parent = this.models.fridge.model.children.find(obj => obj.name === 'handlesPositions')
+            parent.remove(oldHandle)
+            oldHandle.geometry.dispose()
+            oldHandle.material.dispose()
+        }
+        this.activeHandles = []
+
+        this.models[asset] = {}
+        this.models[asset].model = this.resources.items[asset+'Model'].scene
+
+        for(const key in this.handlesPosRot)
+        {
+            const value = this.handlesPosRot[key]
+
+            // Model
+            const handle = this.models[asset].model.children[0].clone()
+            this.activeHandles.push(handle)
+
+            // Options
+            // handle.castShadow = true
+
+            // Material
+            if(!this.defaultMaterial)
+            {
+                this.defaultMaterial = handle.material
+            }
+
+            if(material){
+                handle.material = this.allMaterials[material]
+            }else{
+                handle.material = this.defaultMaterial
+            }
+
+            handle.position.set(value[0].x, value[0].y, value[0].z)
+            handle.rotation.x += value[1].x
+            this.models.fridge.model.children.find(obj => obj.name === 'handlesPositions').add(handle)
+        }
     }
 
     update()

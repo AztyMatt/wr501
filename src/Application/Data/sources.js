@@ -26,5 +26,21 @@ export default[
         name: 'fridgeModel',
         type: 'gltfModel',
         path: 'models/fridge/fridge.gltf'
-    }
+    },
+    // Method 2
+    // {
+    //     name: 'fridgeForHandleModel',
+    //     type: 'gltfModel',
+    //     path: 'models/fridge/fridgeForHandle.gltf'
+    // },
+    // {
+    //     name: 'classicHandleModel',
+    //     type: 'gltfModel',
+    //     path: 'models/fridge/classicHandle.gltf'
+    // },
+    // {
+    //     name: 'customHandleModel',
+    //     type: 'gltfModel',
+    //     path: 'models/fridge/customHandle.gltf'
+    // }
 ]
