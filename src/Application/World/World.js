@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import Application from '../Application.js';
-import Environment from './Environment.js';
+import Application from '../Application.js'
+import Environment from './Environment.js'
 
 export default class World
 {
@@ -27,6 +27,10 @@ export default class World
         this.allMaterials = {}
         this.defaultMaterial = null
 
+        this.x = 1
+        this.y = 1
+        this.size = 0.5
+
         this.resources.on('readyEvent', () =>
         {
             this.setFloor()
@@ -42,57 +46,95 @@ export default class World
             // Debug
             if(this.debug.active)
             {
+                // Floor
+                this.debugFloor = this.debug.ui.addFolder('floor')
+
+                const debugObjectFloor = {
+                    scaleX: this.x,
+                    scaleY: this.y
+                }
+
+                this.debugFloor.add(debugObjectFloor, 'scaleX', 0.1, 10, 0.01).name('Scale X').onChange((value) => {
+                    this.floorScaler('x', value)
+                })
+                this.debugFloor.add(debugObjectFloor, 'scaleY', 0.1, 10, 0.01).name('Scale Y').onChange((value) => {
+                    this.floorScaler('y', value)
+                })
+
+                // Fridge
                 this.debugFridge = this.debug.ui.addFolder('fridge')
 
-                const debugObject = {
+                const debugObjectFridge = {
                     changeToClassic: () => {this.setHandleByVisibility('classic')},
                     changeToCustom: () => {this.setHandleByVisibility('custom')},
                     changeToCustomWhite: () => {this.setHandleByVisibility('custom', 'plastic - black')}
                 }
 
                 // // Method 2
-                // const debugObject = {
+                // const debugObjectFridge = {
                 //     changeToClassic: () => {this.setHandleByIteration('classicHandle')},
                 //     changeToCustom: () => {this.setHandleByIteration('customHandle')},
                 //     changeToCustomWhite: () => {this.setHandleByIteration('customHandle', 'plastic - black')}
                 // }
 
-                this.debugFridge.add(debugObject, 'changeToClassic').name('Poignées classique')
-                this.debugFridge.add(debugObject, 'changeToCustom').name('Poignées customisées')
-                this.debugFridge.add(debugObject, 'changeToCustomWhite').name('Poignées customisées noires')
+                this.debugFridge.add(debugObjectFridge, 'changeToClassic').name('Poignées classique')
+                this.debugFridge.add(debugObjectFridge, 'changeToCustom').name('Poignées customisées')
+                this.debugFridge.add(debugObjectFridge, 'changeToCustomWhite').name('Poignées customisées noires')
             }
         })
     }
 
     setFloor()
-    {
+    {  
+        this.floor = {}
+
         // Texture
         this.textures.floor = {}
         this.textures.floor.color = this.resources.items.floorColorTexture
         this.textures.floor.color.colorSpace = THREE.SRGBColorSpace
-        this.textures.floor.normal = this.resources.items.floorNormalTexture
+        this.textures.floor.height = this.resources.items.floorHeightTexture
+
+        const material = new THREE.MeshStandardMaterial({
+            map: this.textures.floor.color,
+            heightMap: this.textures.floor.height
+        })
+
+        // Geometry
+        this.floorScaler('x', 4)
+        this.floorScaler('y', 3)
+
+        // Add and options
+        this.floor = new THREE.Mesh(this.floor.geometry, material)
+        this.floor.rotation.x = - Math.PI * 0.5
+        this.floor.receiveShadow = true
+        this.scene.add(this.floor)
+    }
+
+    floorScaler(axis, value)
+    {
+         switch (axis)
+        {
+            case 'x':
+                this.x = value
+                break
+            case 'y':
+                this.y = value
+                break
+        }
+        this.floor.geometry = new THREE.PlaneGeometry(this.x, this.y)
+        this.floor.geometry.needsUpdate
 
         for(const key in this.textures.floor)
         {
             const value = this.textures.floor[key]
 
-            value.repeat.set(1.5, 1.5)
+            value.repeat.set(this.x * this.size, this.y * this.size)
             value.wrapS = THREE.RepeatWrapping
             value.wrapT = THREE.RepeatWrapping
+            value.offset.x = 0.5 - (this.x * this.size / 2)
+            value.offset.y = 0.5 - (this.y * this.size / 2)
+            value.needsUpdate = true
         }
-
-        // Model
-        const floorGeometry = new THREE.CircleGeometry(5, 64)
-        const floorMaterial = new THREE.MeshStandardMaterial({
-            map: this.textures.floor.color,
-            normalMap: this.textures.floor.normal
-        })
-        
-        // Add and options
-        const floor = new THREE.Mesh(floorGeometry, floorMaterial)
-        floor.rotation.x = - Math.PI * 0.5
-        floor.receiveShadow = true
-        this.scene.add(floor)
     }
 
     setFridge()

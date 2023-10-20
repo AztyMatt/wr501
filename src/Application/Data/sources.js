@@ -15,12 +15,12 @@ export default[
     {
         name: 'floorColorTexture',
         type: 'texture',
-        path: '/textures/dirt/color.jpg'
+        path: '/textures/floor/color.jpg'
     },
     {
-        name: 'floorNormalTexture',
+        name: 'floorHeightTexture',
         type: 'texture',
-        path: '/textures/dirt/normal.jpg'
+        path: '/textures/floor/height.png'
     },
     {
         name: 'fridgeModel',
