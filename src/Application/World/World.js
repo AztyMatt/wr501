@@ -20,16 +20,32 @@ export default class World
         this.models = {}
         this.animation = {}
 
+        // Handles
         // this.handlesPosRot = {} // Method 2
         // this.activeHandles = [] // Method 2
 
+        // Materials
         this.allMaterialsRetrieved = new Set()
         this.allMaterials = {}
         this.defaultMaterial = null
 
-        this.x = 1
-        this.y = 1
-        this.size = 0.5
+        // Kitchen sizes
+        this.x = 8
+        this.y = 6
+
+        // UVs
+        this.uvSize = 0.5
+
+        // Walls
+        this.walls = {
+            0: {},
+            1: {},
+            2: {},
+            3: {},
+        }
+        this.wallsHeight = 2.5
+        this.wallsRotation = [0.5, 2, -0.5, 1]
+        this.wallsAxis = ['x', 'z', 'x', 'z']
 
         this.resources.on('readyEvent', () =>
         {
@@ -54,11 +70,12 @@ export default class World
                     scaleY: this.y
                 }
 
-                this.debugFloor.add(debugObjectFloor, 'scaleX', 0.1, 10, 0.01).name('Scale X').onChange((value) => {
-                    this.floorScaler('x', value)
+                //0.5m = 1
+                this.debugFloor.add(debugObjectFloor, 'scaleX', 1, 20, 0.1).name('Scale X').onChange((value) => {
+                    this.updateScale('x', value)
                 })
-                this.debugFloor.add(debugObjectFloor, 'scaleY', 0.1, 10, 0.01).name('Scale Y').onChange((value) => {
-                    this.floorScaler('y', value)
+                this.debugFloor.add(debugObjectFloor, 'scaleY', 1, 20, 0.1).name('Scale Y').onChange((value) => {
+                    this.updateScale('y', value)
                 })
 
                 // Fridge
@@ -86,33 +103,55 @@ export default class World
 
     setFloor()
     {  
+        // Floor
         this.floor = {}
 
         // Texture
-        this.textures.floor = {}
-        this.textures.floor.color = this.resources.items.floorColorTexture
-        this.textures.floor.color.colorSpace = THREE.SRGBColorSpace
-        this.textures.floor.height = this.resources.items.floorHeightTexture
+        // this.textures.floor = {}
+        // this.textures.floor.color = this.resources.items.floorColorTexture
+        // this.textures.floor.color.colorSpace = THREE.SRGBColorSpace
+        // this.textures.floor.height = this.resources.items.floorHeightTexture
 
+        // Material (Le mettre a part)
         const material = new THREE.MeshStandardMaterial({
-            map: this.textures.floor.color,
-            heightMap: this.textures.floor.height
+            color: '#ffffff'
         })
+        this.allMaterials['default'] = material
 
         // Geometry
-        this.floorScaler('x', 4)
-        this.floorScaler('y', 3)
+        const geometry = new THREE.PlaneGeometry(1, 1)
 
         // Add and options
-        this.floor = new THREE.Mesh(this.floor.geometry, material)
+        this.floor = new THREE.Mesh(geometry, this.allMaterials['default'])
         this.floor.rotation.x = - Math.PI * 0.5
         this.floor.receiveShadow = true
         this.scene.add(this.floor)
+
+        // Walls
+        for(const key in this.walls)
+        {
+            // Geometry
+            const geometry = new THREE.PlaneGeometry(1, this.wallsHeight)
+
+            // Add and options
+            const wall = new THREE.Mesh(geometry, this.allMaterials['default'])
+            wall.rotation.y = this.wallsRotation[key] * Math.PI
+            wall.position.y = this.wallsHeight / 2
+            wall.receiveShadow = true
+
+            this.scene.add(wall)
+            this.walls[key] = wall
+        }
+
+        // Update the floor and the walls
+        this.updateScale('x', this.x)
+        this.updateScale('y', this.y)
     }
 
-    floorScaler(axis, value)
+    updateScale(axis, value)
     {
-         switch (axis)
+        // Floor
+        switch (axis)
         {
             case 'x':
                 this.x = value
@@ -121,19 +160,30 @@ export default class World
                 this.y = value
                 break
         }
-        this.floor.geometry = new THREE.PlaneGeometry(this.x, this.y)
-        this.floor.geometry.needsUpdate
+        this.floor.scale.set(this.x, this.y, 1)
 
-        for(const key in this.textures.floor)
+        // for(const key in this.textures.floor)
+        // {
+        //     const value = this.textures.floor[key]
+
+        //     value.repeat.set(this.x * this.uvSize, this.y * this.uvSize)
+        //     value.wrapS = THREE.RepeatWrapping
+        //     value.wrapT = THREE.RepeatWrapping
+        //     value.offset.x = 0.5 - (this.x * this.uvSize / 2)
+        //     value.offset.y = 0.5 - (this.y * this.uvSize / 2)
+        //     value.needsUpdate = true
+        // }
+
+        // Walls
+        this.wallsXY = [-this.x, -this.y, this.x, this.y]
+        this.wallsYX = this.wallsXY.slice().reverse()
+
+        for(const key in this.walls)
         {
-            const value = this.textures.floor[key]
+            const value = this.walls[key]
 
-            value.repeat.set(this.x * this.size, this.y * this.size)
-            value.wrapS = THREE.RepeatWrapping
-            value.wrapT = THREE.RepeatWrapping
-            value.offset.x = 0.5 - (this.x * this.size / 2)
-            value.offset.y = 0.5 - (this.y * this.size / 2)
-            value.needsUpdate = true
+            value.position[this.wallsAxis[key]] = this.wallsXY[key] / 2
+            value.scale.x = Math.abs(this.wallsYX[key])
         }
     }
 
@@ -232,7 +282,7 @@ export default class World
 
     setHandleByIteration(asset, material)
     {
-        // Remove 
+        // Remove
         for (const oldHandle of this.activeHandles) {
             const parent = this.models.fridge.model.children.find(obj => obj.name === 'handlesPositions')
             parent.remove(oldHandle)
