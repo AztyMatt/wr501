@@ -49,7 +49,8 @@ export default class World
 
         this.resources.on('readyEvent', () =>
         {
-            this.setFloor()
+            this.setBase()
+            this.setGrid()
             this.setFridge()
             this.environment = new Environment()
 
@@ -101,7 +102,7 @@ export default class World
         })
     }
 
-    setFloor()
+    setBase()
     {  
         // Floor
         this.floor = {}
@@ -161,6 +162,7 @@ export default class World
                 break
         }
         this.floor.scale.set(this.x, this.y, 1)
+        this.floor.name = 'floor'
 
         // for(const key in this.textures.floor)
         // {
@@ -185,6 +187,65 @@ export default class World
             value.position[this.wallsAxis[key]] = this.wallsXY[key] / 2
             value.scale.x = Math.abs(this.wallsYX[key])
         }
+    }
+
+    setGrid(){
+        // Grid
+        // const grid = new THREE.GridHelper(8, 8)
+        // this.scene.add(grid)
+
+        const highlightGeometry = new THREE.PlaneGeometry(1, 1)
+        const highlightMaterial = new THREE.MeshStandardMaterial({ color: '#CCCCCC' })
+        const highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial)
+        highlightMesh.rotation.x = - Math.PI * 0.5
+        highlightMesh.position.set(0.5, 0.01, 0.5) // 0.01 to avoid z-fighting
+        this.scene.add(highlightMesh)
+
+        const mousePosition = new THREE.Vector2()
+        const raycaster = new THREE.Raycaster()
+        let intersects
+
+        window.addEventListener('mousemove', (e) => {
+            mousePosition.x = (e.clientX / window.innerWidth) * 2 - 1
+            mousePosition.y = -(e.clientY / window.innerHeight) * 2 + 1
+            raycaster.setFromCamera(mousePosition, this.application.camera.instance)
+            intersects = raycaster.intersectObjects(this.scene.children)
+            for (const intersect of intersects){
+                if(intersect.object.name === 'floor'){
+                    const highlightPos = new THREE.Vector3().copy(intersect.point).floor().addScalar(0.5)
+                    highlightMesh.position.set(highlightPos.x, 0.01, highlightPos.z) // 0.01 to avoid z-fighting
+                }
+            }
+        })
+
+        // Blocs
+        const blocGeometry = new THREE.BoxGeometry(1, 1)
+        const blocMesh = new THREE.Mesh(blocGeometry, this.allMaterials['default'])
+        console.log(this.scene)
+
+        const blocs = []
+
+        window.addEventListener('mousedown', (e) => {
+            const blocExist = blocs.find((object) => {
+                return (object.position.x === highlightMesh.position.x)
+                && (object.position.z === highlightMesh.position.z)
+            })
+
+            let scope = this // meh
+            if (!blocExist){
+                for (const intersect of intersects){
+                    if(intersect.object.name === 'floor'){
+                        const blocClone = blocMesh.clone()
+                        blocClone.position.copy(highlightMesh.position)
+                        blocClone.position.y = 0.5
+                        scope.scene.add(blocClone)
+
+                        blocs.push(blocClone)
+                    }
+                }
+            }
+            console.log(this.scene.children.length)
+        })
     }
 
     setFridge()
