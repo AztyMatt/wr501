@@ -16,6 +16,36 @@ export default class Camera
 
         this.setInstance()
         this.setOrbitControls()
+
+        this.orbitControlMove = false
+        this.hasOCStartedMooving = false
+        this.hasOCFinishedMooving = true
+
+        // Check if the orbit control is mooving or not
+        this.controls.addEventListener('start', () => {
+            this.orbitControlMove = false
+
+            this.hasOCStartedMooving = true
+            this.hasOCFinishedMooving = false
+            // console.log('START', 'hasStarted :', this.hasOCStartedMooving, 'isMoving :', this.orbitControlMove, 'hasFinished :', this.hasOCFinishedMooving)
+        })
+
+        this.controls.addEventListener('change', () => {
+            if(this.hasOCStartedMooving && !this.hasOCFinishedMooving)
+            {
+                this.orbitControlMove = true
+            }
+
+            // console.log('CHANGE', 'hasStarted :', this.hasOCStartedMooving, 'isMoving :', this.orbitControlMove, 'hasFinished :', this.hasOCFinishedMooving)
+        })
+
+        this.controls.addEventListener('end', () => {
+            this.hasOCStartedMooving = false
+            this.hasOCFinishedMooving = true
+
+            // console.log('END', 'hasStarted :', this.hasOCStartedMooving, 'isMoving :', this.orbitControlMove, 'hasFinished :', this.hasOCFinishedMooving)
+            // console.log('------------------------------------------------------------')
+        })
     }
 
     setInstance()
@@ -40,7 +70,6 @@ export default class Camera
         // this.controls.minAzimuthAngle = 0.7
         // this.controls.maxPolarAngle = 1.4
         // this.controls.minPolarAngle = 1.0
-
 
         this.controls.enableDamping = true
     }

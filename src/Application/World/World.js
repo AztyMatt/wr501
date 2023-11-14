@@ -11,6 +11,7 @@ export default class World
         this.resources = this.application.resources
         this.time = this.application.time
         this.debug = this.application.debug
+        this.camera = this.application.camera
 
         // Discord question
         // this.camera = this.application.camera
@@ -34,7 +35,7 @@ export default class World
         this.z = 3
 
         // UVs
-        this.uvSize = 0.25
+        this.uvSize = 0.5
 
         // Walls
         this.walls = {
@@ -53,22 +54,25 @@ export default class World
         this.highlightMesh = {}
         this.intersects = {}
 
+        // Matrix
         this.matrix = []
-        this.blocRotation = 0 // !!!
+        this.isOccupied = false
 
         // Blocs
         this.blocs = []
         this.blocWidth = 1
         this.blocDepth = 1
         this.blocHeight = 1
-
-        this.isOccupied = false
-        this.clicRotation = 0
+        this.blocRotation = 0
 
         this.resources.on('readyEvent', () =>
         {
+            this.setMaterials()
             this.setBase()
-            this.loadBlocs()
+            this.loadBlocs() // !!! Needs to be renamed ?
+            this.setMatrix()
+            this.setGrid()
+            this.setBlocs(0.4, 0.8, 0.5)
             // this.setFridge()
             this.environment = new Environment()
 
@@ -83,7 +87,6 @@ export default class World
             {
                 // Floor
                 this.debugFloor = this.debug.ui.addFolder('floor')
-
                 const debugObjectFloor = {
                     scaleX: this.x,
                     scaleZ: this.z,
@@ -102,30 +105,47 @@ export default class World
 
                 // Blocs
                 this.debugBlocs = this.debug.ui.addFolder('blocs')
+                const debugObjectBlocs = {}
 
-                const debugObjectBlocs = {
-                    blocLateralDoor40x40: () => {this.setBlocs(0.4, 0.4, 0.4)},
-                    blocLateralDoor40x60: () => {this.setBlocs(0.4, 0.6, 0.4)},
-                    blocLateralDoor40x80: () => {this.setBlocs(0.4, 0.8, 0.4)},
-                    blocLateralDoor40x100: () => {this.setBlocs(0.4, 1.0, 0.4)},
-                    blocLateralDoor40x120: () => {this.setBlocs(0.4, 1.2, 0.4)},
-                    blocLateralDoor40x140: () => {this.setBlocs(0.4, 1.4, 0.4)},
-                    blocLateralDoor40x160: () => {this.setBlocs(0.4, 1.6, 0.4)},
-                    blocLateralDoor40x180: () => {this.setBlocs(0.4, 1.8, 0.4)},
-                    blocLateralDoor40x200: () => {this.setBlocs(0.4, 2.0, 0.4)},
+  
+                this.debugBlocs.height = this.debugBlocs.addFolder('height')
+                debugObjectBlocs.heights = [40, 60, 80, 100, 120, 140, 160, 180, 200]  // !!! function ?
+                for (const height of debugObjectBlocs.heights) {
+                    debugObjectBlocs[`blocLateralDoor40x${height}`] = () => {
+                        this.setBlocs(0.4, height / 100, 0.4)
+                    }
+                    this.debugBlocs.height.add(debugObjectBlocs, `blocLateralDoor40x${height}`).name(`Bloc 40x${height}`)
                 }
-                
-                this.debugBlocs.add(debugObjectBlocs, 'blocLateralDoor40x40').name('Bloc 40x40')
-                this.debugBlocs.add(debugObjectBlocs, 'blocLateralDoor40x60').name('Bloc 40x60')
-                this.debugBlocs.add(debugObjectBlocs, 'blocLateralDoor40x80').name('Bloc 40x80')
-                this.debugBlocs.add(debugObjectBlocs, 'blocLateralDoor40x100').name('Bloc 40x100')
-                this.debugBlocs.add(debugObjectBlocs, 'blocLateralDoor40x120').name('Bloc 40x120')
-                this.debugBlocs.add(debugObjectBlocs, 'blocLateralDoor40x140').name('Bloc 40x140')
-                this.debugBlocs.add(debugObjectBlocs, 'blocLateralDoor40x160').name('Bloc 40x160')
-                this.debugBlocs.add(debugObjectBlocs, 'blocLateralDoor40x180').name('Bloc 40x180')
-                this.debugBlocs.add(debugObjectBlocs, 'blocLateralDoor40x200').name('Bloc 40x200')
-                // !!! -> Use a function with a parameter like start:40 and end:200
-                
+
+                this.debugBlocs.matteLacquerColors = this.debugBlocs.addFolder('matte lacquer colors')
+                debugObjectBlocs.matteLacquerColors = {
+                    'Terracota': 0xD1654E,
+                    'Ivoire': 0xF0EDE1,
+                    'Biege Poudré': 0xE3D3B5,
+                    'Argile': 0xECECE7,
+                    'Bleu Gris': 0x6792AC,
+                    'Grège': 0xB4B0A1,
+                    'Sable': 0xCDAA6D,
+                    'Bleu Marine': 0x263855,
+                    'Vert Forêt': 0x00414B,
+                    'Océan': 0x2E88B6,
+                    'Sauge': 0x879A77,
+                    'Abricot': 0xE69D51,
+                    'Charbon': 0x2B2B2C,
+                    'Expresso': 0x4B2B20,
+                    'Acajou': 0x7D4031,
+                    'Gris': 0x858583
+                }
+                for(const key in debugObjectBlocs.matteLacquerColors)
+                {
+                    const value = debugObjectBlocs.matteLacquerColors[key]
+                    debugObjectBlocs[`${key}`] = () => {
+                        this.allMaterials['matteLacquer'].color.set(value)
+                    }
+
+                    this.debugBlocs.matteLacquerColors.add(debugObjectBlocs, `${key}`).name(`${key}`)
+                }
+
 
 
 
@@ -152,16 +172,67 @@ export default class World
         })
     }
 
+    /**
+     * First step
+     */
+
+    // Materials
+    setMaterials() // !!! Make function for the imported and the procedural ? / To put in Resources.js ?
+    {
+        // Imported
+        this.textures.floor = {}
+        this.textures.floor.color = this.resources.items.floorColorTexture
+        this.textures.floor.height = this.resources.items.floorHeightTexture
+        this.textures.floor.normal = this.resources.items.floorNormalTexture
+        this.textures.floor.roughness = this.resources.items.floorRoughnessTexture
+        this.textures.floor.ambientOcclusion = this.resources.items.floorAmbientOcclusionTexture
+
+        this.textures.floor.color.colorSpace = THREE.SRGBColorSpace
+
+        for(const key in this.textures.floor)
+        {
+            const value = this.textures.floor[key]
+
+            value.repeat.set(this.x * this.uvSize, this.z * this.uvSize)
+            value.wrapS = THREE.RepeatWrapping
+            value.wrapT = THREE.RepeatWrapping
+            value.offset.x = 0.5 - (this.x * this.uvSize / 2)
+            value.offset.z = 0.5 - (this.z * this.uvSize / 2)
+            value.needsUpdate = true
+        }
+
+        const floorMaterial = new THREE.MeshStandardMaterial({
+            map: this.textures.floor.color,
+            // displacementMap: this.textures.floor.height,
+            normalMap: this.textures.floor.normal,
+            roughnessMap:  this.textures.floor.roughness,
+            aoMap: this.textures.floor.ambientOcclusion,
+        })
+        this.allMaterials['floor'] = floorMaterial
+
+        // Procedural
+        const defaultMaterial = new THREE.MeshStandardMaterial({
+            color: 0xFFFFFF
+        })
+        this.allMaterials['default'] = defaultMaterial
+
+        const highlightMaterial = new THREE.MeshStandardMaterial({
+            color: 0xBBBBBB,
+            opacity: 0.75,
+            transparent: true
+        })
+        this.allMaterials['highlight'] = highlightMaterial
+
+        const matteLacquerMaterial = new THREE.MeshStandardMaterial({
+            color: 0xFFFFFF,
+        })
+        this.allMaterials['matteLacquer'] = matteLacquerMaterial
+    }
+
     setBase()
     {  
         // Floor
         this.floor = {}
-
-        // Material
-        const material = new THREE.MeshStandardMaterial({
-            color: 0xFFFFFF
-        })
-        this.allMaterials['default'] = material
 
         // Geometry
         const geometry = new THREE.PlaneGeometry(1, 1)
@@ -223,46 +294,20 @@ export default class World
 
     applyScale()
     {
-        // Floor
-        this.textures.floor = {}
-        this.textures.floor.color = this.resources.items.floorColorTexture
-        this.textures.floor.height = this.resources.items.floorHeightTexture
-        this.textures.floor.normal = this.resources.items.floorNormalTexture
-        this.textures.floor.roughness = this.resources.items.floorRoughnessTexture
-        this.textures.floor.ambientOcclusion = this.resources.items.floorAmbientOcclusionTexture
+        this.floor.material = this.allMaterials['floor']
 
-        this.textures.floor.color.colorSpace = THREE.SRGBColorSpace
-
-        // for(const key in this.textures.floor)
-        // {
-        //     const value = this.textures.floor[key]
-
-        //     value.repeat.set(this.x * this.uvSize, this.z * this.uvSize)
-        //     value.wrapS = THREE.RepeatWrapping
-        //     value.wrapT = THREE.RepeatWrapping
-        //     value.offset.x = 0.5 - (this.x * this.uvSize / 2)
-        //     value.offset.z = 0.5 - (this.z * this.uvSize / 2)
-        //     value.needsUpdate = true
-        // }
-
-        // const floorMaterial = new THREE.MeshStandardMaterial({
-        //     map: this.textures.floor.color,
-        //     // displacementMap: this.textures.floor.height,
-        //     normalMap: this.textures.floor.normal,
-        //     roughnessMap:  this.textures.floor.roughness,
-        //     aoMap: this.textures.floor.ambientOcclusion,
-        // })
-        // this.floor.material = floorMaterial
-
-        this.initializeKitchenMatrix()
-        this.setGrid()
-        this.setBlocs(0.4, 0.8, 0.5)
+        // this.setMatrix()
+        // this.setGrid()
+        // this.setBlocs(0.4, 0.8, 0.5)
     }
 
+    /**
+     * Second step
+     */
 
-
-
-    initializeKitchenMatrix() {
+    // Matrix
+    setMatrix()
+    {
         const numberOfColumns = Number((this.x / this.cellSize).toFixed(2))
         const numberOfRows = Number((this.x / this.cellSize).toFixed(2))
 
@@ -272,6 +317,7 @@ export default class World
         }
     }
 
+    // Blocs
     loadBlocs()
     {
         // Bloc with lateral door model
@@ -284,54 +330,155 @@ export default class World
             if(child instanceof THREE.Mesh)
             {
                 child.castShadow = true
+
+                if(child.name === 'door'){
+                    child.material = this.allMaterials['matteLacquer']
+                }
             }
         })
     }
 
-    setBlocs(width, height, depth) // ! -> Add type after
+    setBlocs(width = 1, height = 1, depth = 1) // ! -> Add type after
     {
-        if(width && height && depth)
-        {
-            this.blocWidth = width
-            this.blocHeight = height
-            this.blocDepth = depth
+        this.blocWidth = width
+        this.blocHeight = height
+        this.blocDepth = depth
 
-            // Update the scale of the bloc
-            this.models.blocLateralDoor.model.scale.set(this.blocWidth, this.blocHeight, this.blocDepth)
+        // Update the scale of the bloc
+        this.models.blocLateralDoor.model.scale.set(this.blocWidth, this.blocHeight, this.blocDepth)
 
-            // Update the scale of the highlight
-            this.highlightMesh.scale.set(this.blocWidth + this.zFightingAvoider, this.blocHeight + this.zFightingAvoider, this.blocDepth + this.zFightingAvoider)
+        // Update the scale of the highlight
+        this.highlightMesh.scale.set(this.blocWidth + this.zFightingAvoider, this.blocHeight + this.zFightingAvoider, this.blocDepth + this.zFightingAvoider)
+        this.highlightMesh.position.y = this.blocHeight / 2
+    }
+
+    placeBloc()
+    {
+        if (!this.isOccupied && !this.camera.orbitControlMove){
+            for (const intersect of this.intersects){
+                if(intersect.object.name === 'floor'){
+                    const blocClone = this.models.blocLateralDoor.model.clone()
+                    blocClone.position.set(this.highlightMesh.position.x, 0, this.highlightMesh.position.z)
+                    blocClone.rotation.y = this.highlightMesh.rotation.y
+                    // blocClone.position.y = this.blocHeight / 2
+                    this.scene.add(blocClone)
+                    this.blocs.push(blocClone)
+
+                    // !!! temp
+                    // blocClone.traverse((child) =>
+                    // {
+                    //     if(child.name === 'Empty'){
+                    //         const geometry = new THREE.BoxGeometry(0.025, 0.1, 0.025); 
+                    //         const material = new THREE.MeshBasicMaterial( {color: 0xFFFFFF} ); 
+                    //         const cube = new THREE.Mesh( geometry, material ); 
+                    //         this.scene.add( cube );
+
+                    //         cube.position.set(blocClone.position.x + (child.position.x * this.blocWidth), blocClone.position.y + (child.position.y * this.blocHeight), blocClone.position.z + (child.position.z * this.blocDepth))
+                    //     }
+                    // })
+
+                    // Assign the width and depth of the bloc to the matrix
+                    this.updateBlocPosOnMatrix()
+                    for (let columns = this.matrixBlocPosXStart; columns < this.matrixBlocPosXEnd; columns++) {
+                        for (let rows = this.matrixBlocPosZStart; rows < this.matrixBlocPosZEnd; rows++) {
+                            this.matrix[columns][rows] = true
+                        }
+                    }
+                }
+            }
         }
     }
 
-    calculMatrixSpace(){
-        const matrixPosX = Number(((this.highlightMesh.position.x / this.cellSize) + (this.x / (2 * this.cellSize))).toFixed(2))
-        const matrixBlocDepth = ((this.blocDepth / this.cellSize) / 2)
+    // Updates
+    updateMatrixSpace()
+    {
+        this.matrixHalfWidth = (this.x / (2 * this.cellSize))
+        this.matrixHalfDepth = (this.z / (2 * this.cellSize))
 
-        const matrixPosZ = Number(((this.highlightMesh.position.z / this.cellSize) + (this.z / (2 * this.cellSize))).toFixed(2))
-        const matrixBlocWidth = ((this.blocWidth / this.cellSize) / 2)
+        this.matrixPosX = Number(((this.highlightMesh.position.x / this.cellSize) + this.matrixHalfWidth).toFixed(2)) // 36 a -36, 40
+        this.matrixPosZ = Number(((this.highlightMesh.position.z / this.cellSize) + this.matrixHalfDepth).toFixed(2))
 
-        if (this.clicRotation == 0 || this.clicRotation == 2)
+        this.matrixBlocWidth = ((this.blocWidth / this.cellSize) / 2) // 4
+        this.matrixBlocDepth = ((this.blocDepth / this.cellSize) / 2)
+    }
+
+    updateBlocPosOnMatrix()
+    {
+        this.updateMatrixSpace()
+
+        if (this.blocRotation % 2 === 0)
         {
-            this.matrixPosXStart = matrixPosX - matrixBlocWidth
-            this.matrixPosXEnd = matrixPosX + matrixBlocWidth
+            this.matrixBlocPosXStart = this.matrixPosX - this.matrixBlocWidth // 0 a 72
+            this.matrixBlocPosXEnd = this.matrixPosX + this.matrixBlocWidth // 8 a 80
 
-            this.matrixPosZStart = matrixPosZ - matrixBlocDepth
-            this.matrixPosZEnd = matrixPosZ + matrixBlocDepth
+            this.matrixBlocPosZStart = this.matrixPosZ - this.matrixBlocDepth
+            this.matrixBlocPosZEnd = this.matrixPosZ + this.matrixBlocDepth
         } else {
-            this.matrixPosXStart = matrixPosX - matrixBlocDepth
-            this.matrixPosXEnd = matrixPosX + matrixBlocDepth
+            this.matrixBlocPosXStart = this.matrixPosX - this.matrixBlocDepth
+            this.matrixBlocPosXEnd = this.matrixPosX + this.matrixBlocDepth
 
-            this.matrixPosZStart = matrixPosZ - matrixBlocWidth
-            this.matrixPosZEnd = matrixPosZ + matrixBlocWidth
+            this.matrixBlocPosZStart = this.matrixPosZ - this.matrixBlocWidth
+            this.matrixBlocPosZEnd = this.matrixPosZ + this.matrixBlocWidth
         }
     }
 
-    isHighlightOnBloc()
+    updateHighlightRestriction()
     {
+        this.updateMatrixSpace()
+        
+        if (this.blocRotation % 2 === 0)
+        {
+            this.highlightPosXMax = this.matrixHalfWidth - this.matrixBlocWidth
+            this.highlightPosZMax = this.matrixHalfDepth - this.matrixBlocDepth
+        } else {
+            this.highlightPosXMax = this.matrixHalfWidth - this.matrixBlocDepth
+            this.highlightPosZMax = this.matrixHalfDepth - this.matrixBlocWidth
+        }
+    }
+
+    // Highlight
+    moveHighlight(e)
+    {
+        // Mouse
+        this.mousePosition.x = (e.clientX / window.innerWidth) * 2 - 1
+        this.mousePosition.y = -(e.clientY / window.innerHeight) * 2 + 1
+
+        // Raycaster
+        this.raycaster.setFromCamera(this.mousePosition, this.application.camera.instance)
+        this.intersects = this.raycaster.intersectObjects(this.scene.children)
+
+        for (const intersect of this.intersects) {
+            if (intersect.object.name === 'floor') { // !!! Avoid placing bloc when aiming the wall -> problem
+                this.updateHighlightRestriction()
+
+                const highlightPosX = Math.floor(intersect.point.x / this.cellSize + (0.5 / 2)) // -40 a 40
+                const highlightPosZ = Math.floor(intersect.point.z / this.cellSize + (0.5 / 2))
+                 // + (0.5 / 2) to place the cursor exactly on the middle of the highlight
+
+                const cellX = highlightPosX * this.cellSize
+                const cellZ = highlightPosZ * this.cellSize
+            
+                if (((highlightPosX <= this.highlightPosXMax && highlightPosX >= -this.highlightPosXMax) && (highlightPosZ <= this.highlightPosZMax && highlightPosZ >= -this.highlightPosZMax))) {
+                    this.highlightMesh.position.set(cellX, this.blocHeight / 2, cellZ)
+
+                    this.isOccupied = this.isHighlightOnOccupiedMatrixPos()
+                    if (this.isOccupied){
+                        this.allMaterials['highlight'].color.setHex(0xFF5555)
+                    } else {
+                        this.allMaterials['highlight'].color.setHex(0xBBBBBB)
+                    }
+                }
+            }
+        }
+    }
+
+    isHighlightOnOccupiedMatrixPos()
+    {
+        this.updateBlocPosOnMatrix()
+
         let isOccupied = false
-        for (let columns = this.matrixPosXStart; columns < this.matrixPosXEnd; columns++) {
-            for (let rows = this.matrixPosZStart; rows < this.matrixPosZEnd; rows++) {
+        for (let columns = this.matrixBlocPosXStart; columns < this.matrixBlocPosXEnd; columns++) {
+            for (let rows = this.matrixBlocPosZStart; rows < this.matrixBlocPosZEnd; rows++) {
                 if (this.matrix[columns][rows]) {
                     isOccupied = true
                     break
@@ -345,115 +492,44 @@ export default class World
         return isOccupied
     }
 
+    // Grid
     setGrid()
     {
         // Help grid
-        const grid = new THREE.GridHelper(this.x, this.x / this.cellSize)
-        this.scene.add(grid)
+        // const grid = new THREE.GridHelper(this.x, this.x / this.cellSize)
+        // this.scene.add(grid)
 
         // Highlight
-        const highlightGeometry = new THREE.BoxGeometry(1, 1, 1)
-        const highlightMaterial = new THREE.MeshStandardMaterial({color: 0xBBBBBB, opacity: 0.75, transparent: true})
-        this.highlightMesh = new THREE.Mesh(highlightGeometry, highlightMaterial)
-        console.log(this.highlightMesh)
+        const highlightGeometry = new THREE.BoxGeometry(1, 1, 1, 1, 1, 2)
+
+        // Know the orientation of the bloc
+        const position = highlightGeometry.getAttribute("position")
+        if (position !== undefined) {
+            const array = position.array;
+
+            array[3] += 0.125
+            array[12] += 0.125
+
+            highlightGeometry.setAttribute("position", new THREE.BufferAttribute(array, 3));
+        }
+
+        this.highlightMesh = new THREE.Mesh(highlightGeometry, this.allMaterials['highlight'])
 
         // this.highlightMesh.rotation.x = -Math.PI * 0.5
         this.highlightMesh.position.set(0, this.blocHeight / 2, 0) // To avoid clipping at launch
         this.scene.add(this.highlightMesh)
 
         // Mouse
-        const mousePosition = new THREE.Vector2()
-        const raycaster = new THREE.Raycaster()
+        this.mousePosition = new THREE.Vector2()
+        this.raycaster = new THREE.Raycaster()
 
-        // Avoid placing bloc when rotating around the kitchen (! -> To replace by a test if the orbits controls rotate or not)
-        let mouseDownTime
-        let mouseUpTime
-
-        window.addEventListener('mousedown', (e) =>
-        {
-            mouseDownTime = new Date().getTime()
-        })
-
-        window.addEventListener('mouseup', (e) =>
-        {
-            // Get the duration of the click
-            mouseUpTime = new Date().getTime()
-            const clickDuration = mouseUpTime - mouseDownTime
-
-            if (clickDuration < 100) {
-                let scope = this // to keep the scope
-
-                if (!this.isOccupied){
-                    for (const intersect of this.intersects){
-                        if(intersect.object.name === 'floor'){
-                            const blocClone = this.models.blocLateralDoor.model.clone()
-                            blocClone.position.set(this.highlightMesh.position.x, 0, this.highlightMesh.position.z)
-                            blocClone.rotation.y = this.highlightMesh.rotation.y
-                            // blocClone.position.y = this.blocHeight / 2
-                            scope.scene.add(blocClone)
-                            this.blocs.push(blocClone)
-
-                            // Assign the width and depth of the bloc to the matrix
-                            for (let columns = this.matrixPosXStart; columns < this.matrixPosXEnd; columns++) {
-                                for (let rows = this.matrixPosZStart; rows < this.matrixPosZEnd; rows++) {
-                                    this.matrix[columns][rows] = true
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        })
-
-        window.addEventListener('mousemove', (e) => 
-        {
-            // Mouse
-            mousePosition.x = (e.clientX / window.innerWidth) * 2 - 1
-            mousePosition.y = -(e.clientY / window.innerHeight) * 2 + 1
-
-            // Raycaster
-            raycaster.setFromCamera(mousePosition, this.application.camera.instance)
-            this.intersects = raycaster.intersectObjects(this.scene.children)
-
-            // Highlight restriction
-            const highlightPosXMax = Number((((this.x / this.cellSize) / 2) - ((this.blocWidth / this.cellSize) / 2)).toFixed(2)) // Math.round 'cause JS is weird (!!!)
-            const highlightPosZMax = Number((((this.z / this.cellSize) / 2) - ((this.blocDepth / this.cellSize) / 2)).toFixed(2))
-            // Size of the kitchen divided by the size of one cell, divided by 2 'cause of the two sides, minus the number of cell for the highlight divided by 2 for his middle
-
-            for (const intersect of this.intersects) {
-                if (intersect.object.name === 'floor') {
-                    const highlightPosX = Math.floor(intersect.point.x / this.cellSize + (0.5 / 2)) // + (0.5 / 2) to place the cursor exactly on the middle of the highlight
-                    const highlightPosZ = Math.floor(intersect.point.z / this.cellSize + (0.5 / 2))
-
-                    const cellX = highlightPosX * this.cellSize
-                    const cellZ = highlightPosZ * this.cellSize
-                
-                    if (((highlightPosX <= highlightPosXMax && highlightPosX >= -highlightPosXMax) && (highlightPosZ <= highlightPosZMax && highlightPosZ >= -highlightPosZMax))) {
-                        this.highlightMesh.position.set(cellX, this.blocHeight / 2, cellZ)
-                        
-                        this.calculMatrixSpace()
-                        this.isOccupied = this.isHighlightOnBloc()
-                        if (this.isOccupied){
-                            highlightMaterial.color.setHex(0xFF5555)
-                        } else {
-                            highlightMaterial.color.setHex(0xBBBBBB)
-                        }
-                    }
-                }
-            }
-        })
-
+        window.addEventListener('mouseup', (e) => { this.placeBloc(e) })
+        window.addEventListener('mousemove', (e) => { this.moveHighlight(e) })
         window.addEventListener('keydown', (e) =>
         {
-            if (e.key === 'r') {
-                if(this.clicRotation < 3) {
-                    this.clicRotation += 1
-                    console.log(this.clicRotation)
-                } else {
-                    this.clicRotation = 0
-                }
-                this.calculMatrixSpace()
-                this.highlightMesh.rotation.y = this.clicRotation * (Math.PI / 2)
+            if (e.key === 'r' || e.key === 'R') {
+                this.blocRotation = (this.blocRotation + 1) % 4
+                this.highlightMesh.rotation.y = this.blocRotation * (Math.PI / 2)
             }
         })
     }
@@ -599,6 +675,6 @@ export default class World
 
     update()
     {
-
+        // console.log(this.camera.orbitControlMove)
     }
 } 
