@@ -57,14 +57,14 @@ export default class Camera
             0.1,
             100
         )
-        this.instance.position.set(5, 5, 5)
+        this.instance.position.set(2, 2, 2)
         this.scene.add(this.instance)
     }
 
     setOrbitControls()
     {
         this.controls = new OrbitControls(this.instance, this.canvas)
-        this.controls.target = new THREE.Vector3(0, 0.85, 0)
+        this.controls.target = new THREE.Vector3(0, 0.5, 0)
 
         // this.controls.maxAzimuthAngle = 2.5
         // this.controls.minAzimuthAngle = 0.7

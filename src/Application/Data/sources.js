@@ -78,7 +78,14 @@ export default[
     {
         name: 'blocLateralDoorModel',
         type: 'gltfModel',
-        path: 'models/blocs/blocLateralDoor.gltf'
+        path: 'models/blocs/blocLateralDoor.glb'
+    },
+
+
+    {
+        name: 'blocDrawerModel',
+        type: 'gltfModel',
+        path: 'models/blocs/blocDrawer.glb'
     },
 
 

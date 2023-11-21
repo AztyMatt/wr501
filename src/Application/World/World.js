@@ -58,21 +58,22 @@ export default class World
         this.matrix = []
         this.isOccupied = false
 
-        // Blocs
-        this.blocs = []
-        this.blocWidth = 1
-        this.blocDepth = 1
-        this.blocHeight = 1
+        // Bloc
+        this.bloc = null
+        this.blocScale = new THREE.Vector3(1, 1, 1)
+        this.blocInitialScale = new THREE.Vector3()
+        this.blocInitialScaleClone = new THREE.Vector3()
         this.blocRotation = 0
 
         this.resources.on('readyEvent', () =>
         {
             this.setMaterials()
             this.setBase()
-            this.loadBlocs() // !!! Needs to be renamed ?
+            this.loadBlocs()
             this.setMatrix()
             this.setGrid()
-            this.setBlocs(0.4, 0.8, 0.5)
+            this.setCurrentBloc('blocDrawer')
+            this.setBloc(1, 1, 1)
             // this.setFridge()
             this.environment = new Environment()
 
@@ -108,13 +109,28 @@ export default class World
                 const debugObjectBlocs = {}
 
   
-                this.debugBlocs.height = this.debugBlocs.addFolder('height')
-                debugObjectBlocs.heights = [40, 60, 80, 100, 120, 140, 160, 180, 200]  // !!! function ?
+                this.debugBlocs.blocLateralDoor = this.debugBlocs.addFolder('blocLateralDoor')
+                debugObjectBlocs.heights = [40, 60, 80, 100, 120, 140, 160, 180, 200]  // !!! function(name of the bloc, values used, (width or depth) -> if) ?
                 for (const height of debugObjectBlocs.heights) {
                     debugObjectBlocs[`blocLateralDoor40x${height}`] = () => {
-                        this.setBlocs(0.4, height / 100, 0.4)
+                        this.setCurrentBloc('blocLateralDoor')
+
+                        const conversion = ((height / 100) / this.blocInitialScaleClone.y)
+                        this.setBloc(1, conversion, 1)
                     }
-                    this.debugBlocs.height.add(debugObjectBlocs, `blocLateralDoor40x${height}`).name(`Bloc 40x${height}`)
+                    this.debugBlocs.blocLateralDoor.add(debugObjectBlocs, `blocLateralDoor40x${height}`).name(`Bloc 40x${height}`)
+                }
+
+                this.debugBlocs.blocDrawer = this.debugBlocs.addFolder('blocDrawer')
+                debugObjectBlocs.widths = [40, 60, 80]  // !!! function ?
+                for (const width of debugObjectBlocs.widths) {
+                    debugObjectBlocs[`blocDrawer${width}x60`] = () => {
+                        this.setCurrentBloc('blocDrawer')
+
+                        const conversion = ((width / 100) / this.blocInitialScaleClone.z)
+                        this.setBloc(1, 1, conversion)
+                    }
+                    this.debugBlocs.blocDrawer.add(debugObjectBlocs, `blocDrawer${width}x60`).name(`Bloc ${width}x60`)
                 }
 
                 this.debugBlocs.matteLacquerColors = this.debugBlocs.addFolder('matte lacquer colors')
@@ -298,7 +314,7 @@ export default class World
 
         // this.setMatrix()
         // this.setGrid()
-        // this.setBlocs(0.4, 0.8, 0.5)
+        // this.setBloc(0.4, 0.8, 0.5)
     }
 
     /**
@@ -320,36 +336,53 @@ export default class World
     // Blocs
     loadBlocs()
     {
-        // Bloc with lateral door model
-        this.models.blocLateralDoor = {}
-        this.models.blocLateralDoor.model = this.resources.items.blocLateralDoorModel.scene
-
-        // Options
-        this.models.blocLateralDoor.model.traverse((child) =>
+        const loadBloc = (bloc, materialChildName, needShadow) =>
         {
-            if(child instanceof THREE.Mesh)
-            {
-                child.castShadow = true
-
-                if(child.name === 'door'){
-                    child.material = this.allMaterials['matteLacquer']
-                }
+            // Bloc with lateral door model
+            this.models[bloc] = {
+                model: this.resources.items[`${bloc}Model`].scene
             }
-        })
+        
+            // Options
+            this.models[bloc].model.traverse((child) =>
+            {
+                if(child.isMesh) // child instanceof THREE.Mesh
+                {
+                    child.castShadow = needShadow
+
+                    const condition = materialChildName ? child.name === materialChildName : child.userData.customisable
+                    if(condition)
+                    {
+                        child.material = this.allMaterials['matteLacquer']
+                    }
+                }
+            })
+        }
+
+        loadBloc('blocLateralDoor', 'door', true)
+        loadBloc('blocDrawer', null, true)
     }
 
-    setBlocs(width = 1, height = 1, depth = 1) // ! -> Add type after
+    setCurrentBloc(type)
     {
-        this.blocWidth = width
-        this.blocHeight = height
-        this.blocDepth = depth
+        this.bloc = this.models[type].model
+        this.blocInitialScale = this.bloc.children[0].scale
+        this.blocInitialScaleClone = this.blocInitialScale.clone()
+    }
+
+    setBloc(width = 1, height = 1, depth = 1)
+    {
+        // Set sizes of the bloc
+        this.blocScale.x = Number((this.blocInitialScaleClone.x * width).toFixed(2))
+        this.blocScale.y =  Number((this.blocInitialScaleClone.y * height).toFixed(2))
+        this.blocScale.z = Number((this.blocInitialScaleClone.z * depth).toFixed(2))
 
         // Update the scale of the bloc
-        this.models.blocLateralDoor.model.scale.set(this.blocWidth, this.blocHeight, this.blocDepth)
+        this.blocInitialScale.set(this.blocScale.x, this.blocScale.y, this.blocScale.z)
 
         // Update the scale of the highlight
-        this.highlightMesh.scale.set(this.blocWidth + this.zFightingAvoider, this.blocHeight + this.zFightingAvoider, this.blocDepth + this.zFightingAvoider)
-        this.highlightMesh.position.y = this.blocHeight / 2
+        this.highlightMesh.scale.set(this.blocScale.x + this.zFightingAvoider, this.blocScale.y + this.zFightingAvoider, this.blocScale.z + this.zFightingAvoider)
+        this.highlightMesh.position.y = this.blocScale.y / 2
     }
 
     placeBloc()
@@ -357,25 +390,68 @@ export default class World
         if (!this.isOccupied && !this.camera.orbitControlMove){
             for (const intersect of this.intersects){
                 if(intersect.object.name === 'floor'){
-                    const blocClone = this.models.blocLateralDoor.model.clone()
+                    const blocClone =this.bloc.clone()
                     blocClone.position.set(this.highlightMesh.position.x, 0, this.highlightMesh.position.z)
                     blocClone.rotation.y = this.highlightMesh.rotation.y
-                    // blocClone.position.y = this.blocHeight / 2
+                    // blocClone.position.y = this.blocScale.y / 2
                     this.scene.add(blocClone)
-                    this.blocs.push(blocClone)
 
                     // !!! temp
-                    // blocClone.traverse((child) =>
-                    // {
-                    //     if(child.name === 'Empty'){
-                    //         const geometry = new THREE.BoxGeometry(0.025, 0.1, 0.025); 
-                    //         const material = new THREE.MeshBasicMaterial( {color: 0xFFFFFF} ); 
-                    //         const cube = new THREE.Mesh( geometry, material ); 
-                    //         this.scene.add( cube );
+                    blocClone.traverse((child) =>
+                    {
+                        // if(child.name === 'drawerHandle_1'){
+                        //     console.log(child.name)
+                        //     child.scale.set(0.4, 0.6, 0.4)
+                        //     console.log(child.scale)
+                        //     console.log(child.parent.name)
+                        //     console.log(child.parent.scale)
+                        //     console.log(child.parent.parent.name)
+                        //     console.log(child.parent.parent.scale)
+                        //     console.log('--------------------------')
+                        //     const smallHandleGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.05); 
+                        //     const smallHandle = new THREE.Mesh( smallHandleGeometry, this.allMaterials['default'] );
+                        //     this.scene.add( smallHandle );
+                        //     smallHandle.position.set
+                        //     (
+                        //         blocClone.position.x + (child.position.x * this.blocScale.x),
+                        //         blocClone.position.y + (child.position.y * this.blocScale.y),
+                        //         blocClone.position.z + (child.position.z * this.blocScale.z) - this.blocScale.z/2,
+                        //     )
 
-                    //         cube.position.set(blocClone.position.x + (child.position.x * this.blocWidth), blocClone.position.y + (child.position.y * this.blocHeight), blocClone.position.z + (child.position.z * this.blocDepth))
-                    //     }
-                    // })
+                        //     const longHandleGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.4); 
+                        //     const longHandle = new THREE.Mesh( longHandleGeometry, this.allMaterials['default'] );
+                        //     this.scene.add( longHandle );
+                        //     longHandle.position.set
+                        //     (
+                        //         blocClone.position.x + (child.position.x * this.blocScale.x),
+                        //         blocClone.position.y + (child.position.y * this.blocScale.y) + (this.blocScale.y/2) / 4,
+                        //         blocClone.position.z + (child.position.z * this.blocScale.z)
+                        //     )
+                        // }
+
+                        if(child.userData.handle)
+                        {
+                            const smallHandleGeometry = new THREE.BoxGeometry(0.025, 0.025, 0.025)
+                            const smallHandle = new THREE.Mesh( smallHandleGeometry, this.allMaterials['default'] )
+                            this.scene.add( smallHandle )
+                            smallHandle.position.set
+                            (
+                                (blocClone.position.x + (child.position.x * this.blocScale.x)) - 3.8,
+                                (blocClone.position.y + (child.position.y * this.blocScale.y)) / (this.blocScale.y * child.scale.y),
+                                (blocClone.position.z + (child.position.z * this.blocScale.z))
+                            )
+
+                            const longHandleGeometry = new THREE.BoxGeometry(0.05, 0.01, this.blocScale.z)
+                            const longHandle = new THREE.Mesh( longHandleGeometry, this.allMaterials['default'] )
+                            this.scene.add(longHandle)
+                            longHandle.position.set
+                            (
+                                (blocClone.position.x + (child.position.x * this.blocScale.x)) - 3.8,
+                                (blocClone.position.y + (child.position.y * this.blocScale.y)) / (this.blocScale.y * child.scale.y) + ((this.blocScale.y * child.parent.scale.y) / 2),
+                                (blocClone.position.z + (child.position.z * this.blocScale.z))
+                            )
+                        }
+                    })
 
                     // Assign the width and depth of the bloc to the matrix
                     this.updateBlocPosOnMatrix()
@@ -398,8 +474,8 @@ export default class World
         this.matrixPosX = Number(((this.highlightMesh.position.x / this.cellSize) + this.matrixHalfWidth).toFixed(2)) // 36 a -36, 40
         this.matrixPosZ = Number(((this.highlightMesh.position.z / this.cellSize) + this.matrixHalfDepth).toFixed(2))
 
-        this.matrixBlocWidth = ((this.blocWidth / this.cellSize) / 2) // 4
-        this.matrixBlocDepth = ((this.blocDepth / this.cellSize) / 2)
+        this.matrixBlocWidth = ((this.blocScale.x / this.cellSize) / 2) // 4
+        this.matrixBlocDepth = ((this.blocScale.z / this.cellSize) / 2)
     }
 
     updateBlocPosOnMatrix()
@@ -459,7 +535,7 @@ export default class World
                 const cellZ = highlightPosZ * this.cellSize
             
                 if (((highlightPosX <= this.highlightPosXMax && highlightPosX >= -this.highlightPosXMax) && (highlightPosZ <= this.highlightPosZMax && highlightPosZ >= -this.highlightPosZMax))) {
-                    this.highlightMesh.position.set(cellX, this.blocHeight / 2, cellZ)
+                    this.highlightMesh.position.set(cellX, this.blocScale.y / 2, cellZ)
 
                     this.isOccupied = this.isHighlightOnOccupiedMatrixPos()
                     if (this.isOccupied){
@@ -516,7 +592,7 @@ export default class World
         this.highlightMesh = new THREE.Mesh(highlightGeometry, this.allMaterials['highlight'])
 
         // this.highlightMesh.rotation.x = -Math.PI * 0.5
-        this.highlightMesh.position.set(0, this.blocHeight / 2, 0) // To avoid clipping at launch
+        this.highlightMesh.position.set(0, this.blocScale.y / 2, 0) // To avoid clipping at launch
         this.scene.add(this.highlightMesh)
 
         // Mouse
