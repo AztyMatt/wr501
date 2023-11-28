@@ -76,16 +76,36 @@ export default[
 
 
     {
-        name: 'blocLateralDoorModel',
+        name: 'lateralDoorModel',
         type: 'gltfModel',
-        path: 'models/blocs/blocLateralDoor.glb'
+        path: 'models/blocs/lateralDoor.glb'
+    },
+    {
+        name: 'drawerX4Model',
+        type: 'gltfModel',
+        path: 'models/blocs/drawerX4.glb'
     },
 
 
     {
-        name: 'blocDrawerModel',
+        name: 'anemoneModel',
         type: 'gltfModel',
-        path: 'models/blocs/blocDrawer.glb'
+        path: 'models/handles/anemone.glb'
+    },
+    {
+        name: 'dahliaLargeModel',
+        type: 'gltfModel',
+        path: 'models/handles/dahliaLarge.glb'
+    },
+    {
+        name: 'freesiaModel',
+        type: 'gltfModel',
+        path: 'models/handles/freesia.glb'
+    },
+    {
+        name: 'lilaModel',
+        type: 'gltfModel',
+        path: 'models/handles/lila.glb'
     },
 
 
