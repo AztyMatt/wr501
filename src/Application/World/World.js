@@ -11,10 +11,6 @@ export default class World
         this.resources = this.application.resources
         this.time = this.application.time
         this.debug = this.application.debug
-        this.camera = this.application.camera
-
-        // Discord question
-        // this.camera = this.application.camera
 
         // Setup
         this.textures = {}
@@ -24,13 +20,9 @@ export default class World
         }
         this.animation = {}
 
-        // Handles
-        // this.handlesPosRot = {} // Method 2
-        // this.activeHandles = [] // Method 2
-
         // Materials
-        this.allMaterialsRetrieved = new Set()
-        this.allMaterials = {}
+        this.materialsRetrieved = new Set()
+        this.materials = {}
         this.defaultMaterial = null
 
         // Kitchen sizes
@@ -47,7 +39,7 @@ export default class World
             2: {},
             3: {},
         }
-        this.wallsHeight = 2
+        this.wallsHeight = 2.4
         this.wallsRotation = [0.5, 2, -0.5, 1]
         this.wallsAxis = ['x', 'z', 'x', 'z']
 
@@ -75,26 +67,81 @@ export default class World
             {
                 name: 'drawerX4'
             },
+            {
+                name: 'drawerX3'
+            },
+            {
+                name: 'drawerX2'
+            },
         ]
         this.blocsPlaced = []
 
         // Handle
         this.handles = [
             {
-                name: 'dahliaLarge',
-                position: 'edge top'
+                name: 'mimosa',
+                position: 'right',
+                materialsNames: ['silver', 'blackMat', 'brass']
+            },
+            {
+                name: 'cosmosSmall',
+                position: 'top',
+                materialsNames: ['silver', 'blackMat', 'brass']
+            },
+            {
+                name: 'cosmosLarge',
+                position: 'top',
+                materialsNames: ['silver', 'blackMat', 'brass']
             },
             {
                 name: 'anemone',
-                position: 'right' // !!! Set handles on drawers to the middle instead of the right side
+                position: 'right', // !!! Set handles on drawers to the middle instead of the right side
+                materialsNames: ['silver', 'blackMat', 'brassBrushed']
+            },
+            // {
+            //     name: 'dahliaSmall', // !!!
+            //     position: 'edge top',
+            //     materialsNames: ['silver', 'blackMat', 'brass']
+            // },
+            // {
+            //     name: 'dahliaMedium', // !!!
+            //     position: 'edge top',
+            //     materialsNames: ['silver', 'blackMat', 'brass']
+            // },
+            {
+                name: 'dahliaLarge',
+                position: 'edge top',
+                materialsNames: ['silver', 'blackMat', 'brass']
             },
             {
                 name: 'freesia',
-                position: 'top'
+                position: 'top',
+                materialsNames: ['silver', 'blackMat', 'brass']
             },
             {
                 name: 'lila',
-                position: 'top'
+                position: 'top',
+                materialsNames: ['silver', 'blackMat', 'brass']
+            },
+            // {
+            //     name: 'irisSmall', // !!!
+            //     position: 'edge top',
+            //     materialsNames: ['silver', 'blackBrushed']
+            // },
+            {
+                name: 'irisMedium',
+                position: 'edge top',
+                materialsNames: ['silver', 'blackBrushed']
+            },
+            {
+                name: 'irisLarge',
+                position: 'edge top',
+                materialsNames: ['silver', 'blackBrushed']
+            },
+            {
+                name: 'irisXL',
+                position: 'edge right',
+                materialsNames: ['silver', 'blackBrushed']
             },
         ]
         this.handle = {}
@@ -108,16 +155,9 @@ export default class World
             this.setMatrix()
             this.setGrid()
             this.setCurrentBloc(this.blocs[0].name)
-            this.setCurrentHandle(this.handles[0].name, this.handles[0].position)
+            this.setCurrentHandle(this.handles[0].name, this.handles[0].position, this.handles[0].materialsNames[0])
             this.setBloc(1, 1, 1)
-            // this.setFridge()
             this.environment = new Environment()
-
-            // Discord question
-            // if(this.models.fridge)
-            // {
-            //     this.camera.target = this.models.fridge.model.position
-            // }
 
             // Debug
             if(this.debug.active)
@@ -141,7 +181,7 @@ export default class World
 
 
                 // Blocs
-                this.debugBlocs = this.debug.ui.addFolder('blocs')
+                this.debugBlocs = this.debug.ui.addFolder('blocs') //  !!! create a const instead of a this.
                 const debugObjectBlocs = {}
 
                 this.debugBlocs.blocLateralDoor = this.debugBlocs.addFolder('lateralDoor')
@@ -156,7 +196,7 @@ export default class World
                     this.debugBlocs.blocLateralDoor.add(debugObjectBlocs, `lateralDoor40x${height}`).name(`Bloc 40x${height}`)
                 }
 
-                this.debugBlocs.blocDrawer = this.debugBlocs.addFolder('drawerX4')
+                this.debugBlocs.blocDrawerX4 = this.debugBlocs.addFolder('drawerX4') // !!! same function for X4, X3, X2 ?
                 debugObjectBlocs.widths = [40, 60, 80]  // !!! function ?
                 for (const width of debugObjectBlocs.widths) {
                     debugObjectBlocs[`drawerX4${width}x60`] = () => {
@@ -165,7 +205,31 @@ export default class World
                         const conversion = ((width / 100) / this.blocPreviousScale.z)
                         this.setBloc(1, 1, conversion)
                     }
-                    this.debugBlocs.blocDrawer.add(debugObjectBlocs, `drawerX4${width}x60`).name(`Bloc ${width}x60`)
+                    this.debugBlocs.blocDrawerX4.add(debugObjectBlocs, `drawerX4${width}x60`).name(`Bloc ${width}x60`)
+                }
+
+                this.debugBlocs.blocDrawerX3 = this.debugBlocs.addFolder('drawerX3')
+                debugObjectBlocs.widths = [40, 60, 80]
+                for (const width of debugObjectBlocs.widths) {
+                    debugObjectBlocs[`drawerX3${width}x60`] = () => {
+                        this.setCurrentBloc('drawerX3')
+
+                        const conversion = ((width / 100) / this.blocPreviousScale.z)
+                        this.setBloc(1, 1, conversion)
+                    }
+                    this.debugBlocs.blocDrawerX3.add(debugObjectBlocs, `drawerX3${width}x60`).name(`Bloc ${width}x60`)
+                }
+
+                this.debugBlocs.blocDrawerX2 = this.debugBlocs.addFolder('drawerX2')
+                debugObjectBlocs.widths = [40, 60, 80]
+                for (const width of debugObjectBlocs.widths) {
+                    debugObjectBlocs[`drawerX2${width}x60`] = () => {
+                        this.setCurrentBloc('drawerX2')
+
+                        const conversion = ((width / 100) / this.blocPreviousScale.z)
+                        this.setBloc(1, 1, conversion)
+                    }
+                    this.debugBlocs.blocDrawerX2.add(debugObjectBlocs, `drawerX2${width}x60`).name(`Bloc ${width}x60`)
                 }
 
                 this.debugBlocs.matteLacquerColors = this.debugBlocs.addFolder('matte lacquer colors')
@@ -191,7 +255,7 @@ export default class World
                 {
                     const value = debugObjectBlocs.matteLacquerColors[key]
                     debugObjectBlocs[`${key}`] = () => {
-                        this.allMaterials['matteLacquer'].color.set(value)
+                        this.materials.blocs['matteLacquer'].color.set(value)
                     }
 
                     this.debugBlocs.matteLacquerColors.add(debugObjectBlocs, `${key}`).name(`${key}`)
@@ -200,39 +264,26 @@ export default class World
 
 
                 // Handles
+
+                // Exception: 
+                // Iris = blackBrushed / no brass
+                // Anemone = brassBrushed
+
                 this.debugHandles = this.debug.ui.addFolder('handles')
                 const debugObjectHandles = {}
 
                 for (const handle of this.handles) {
-                    debugObjectHandles[`changeTo${handle.name}`] = () => {
-                        this.setCurrentHandle(handle.name, handle.position)
-                        this.removeHandles()
-                        this.placeHandles()
+                    this.debugHandles[handle.name] = this.debugHandles.addFolder(handle.name)
+
+                    for (const materialName of handle.materialsNames) {
+                        debugObjectHandles[`changeTo${handle.name}-${materialName}`] = () => {
+                            this.setCurrentHandle(handle.name, handle.position, materialName)
+                            this.removeHandles()
+                            this.placeHandles()
+                        }
+                        this.debugHandles[handle.name].add(debugObjectHandles, `changeTo${handle.name}-${materialName}`).name(`${handle.name} color ${materialName}`)
                     }
-                    this.debugHandles.add(debugObjectHandles, `changeTo${handle.name}`).name(handle.name)
                 }
-
-
-
-                // Fridge
-                this.debugFridge = this.debug.ui.addFolder('fridge')
-
-                const debugObjectFridge = {
-                    changeToClassic: () => {this.setHandleByVisibility('classic')},
-                    changeToCustom: () => {this.setHandleByVisibility('custom')},
-                    changeToCustomWhite: () => {this.setHandleByVisibility('custom', 'plastic - black')}
-                }
-
-                // // Method 2
-                // const debugObjectFridge = {
-                //     changeToClassic: () => {this.setHandleByIteration('classicHandle')},
-                //     changeToCustom: () => {this.setHandleByIteration('customHandle')},
-                //     changeToCustomWhite: () => {this.setHandleByIteration('customHandle', 'plastic - black')}
-                // }
-
-                this.debugFridge.add(debugObjectFridge, 'changeToClassic').name('Poignées classique')
-                this.debugFridge.add(debugObjectFridge, 'changeToCustom').name('Poignées customisées')
-                this.debugFridge.add(debugObjectFridge, 'changeToCustomWhite').name('Poignées customisées noires')
             }
         })
     }
@@ -244,14 +295,16 @@ export default class World
     // Materials
     setMaterials() // !!! Make function for the imported and the procedural ? / To put in Resources.js ?
     {
-        // Imported
-        this.textures.floor = {}
-        this.textures.floor.color = this.resources.items.floorColorTexture
-        this.textures.floor.height = this.resources.items.floorHeightTexture
-        this.textures.floor.normal = this.resources.items.floorNormalTexture
-        this.textures.floor.roughness = this.resources.items.floorRoughnessTexture
-        this.textures.floor.ambientOcclusion = this.resources.items.floorAmbientOcclusionTexture
-
+        /**
+         * Imported
+         */
+        this.textures.floor = {
+            color: this.resources.items.floorColorTexture,
+            height: this.resources.items.floorHeightTexture,
+            normal: this.resources.items.floorNormalTexture,
+            roughness: this.resources.items.floorRoughnessTexture,
+            ambientOcclusion: this.resources.items.floorAmbientOcclusionTexture
+        }
         this.textures.floor.color.colorSpace = THREE.SRGBColorSpace
 
         for(const key in this.textures.floor)
@@ -273,25 +326,141 @@ export default class World
             roughnessMap:  this.textures.floor.roughness,
             aoMap: this.textures.floor.ambientOcclusion,
         })
-        this.allMaterials['floor'] = floorMaterial
 
-        // Procedural
+        this.textures.walls = {
+            color: this.resources.items.wallsColorTexture,
+            height: this.resources.items.wallsHeightTexture,
+            normal: this.resources.items.wallsNormalTexture,
+            roughness: this.resources.items.wallsRoughnessTexture,
+            ambientOcclusion: this.resources.items.wallsAmbientOcclusionTexture
+        }
+        this.textures.walls.color.colorSpace = THREE.SRGBColorSpace
+
+        for(const key in this.textures.walls)
+        {
+            const value = this.textures.walls[key]
+
+            value.repeat.set(this.x * this.uvSize, this.z * this.uvSize)
+            value.wrapS = THREE.RepeatWrapping
+            value.wrapT = THREE.RepeatWrapping
+            value.offset.x = (this.x * this.uvSize / 2)
+            value.offset.z = (this.z * this.uvSize / 2)
+            value.needsUpdate = true
+        }
+
+        const wallsMaterial = new THREE.MeshStandardMaterial({
+            map: this.textures.walls.color,
+            // displacementMap: this.textures.walls.height,
+            normalMap: this.textures.walls.normal,
+            roughnessMap:  this.textures.walls.roughness,
+            aoMap: this.textures.walls.ambientOcclusion
+        })
+        this.materials.room = {
+            'floor': floorMaterial,
+            'walls': wallsMaterial
+        }
+
+        /**
+         * Procedural
+         */
+        // Setup
         const defaultMaterial = new THREE.MeshStandardMaterial({
             color: 0xFFFFFF
         })
-        this.allMaterials['default'] = defaultMaterial
 
         const highlightMaterial = new THREE.MeshStandardMaterial({
             color: 0xBBBBBB,
             opacity: 0.75,
             transparent: true
         })
-        this.allMaterials['highlight'] = highlightMaterial
+        this.materials.setup = {
+            'default': defaultMaterial,
+            'highlight': highlightMaterial
+        }
+
+        // Blocs
+        this.textures.blocs = {
+            color: this.resources.items.oakColorTexture
+        }
+        this.textures.blocs.color.colorSpace = THREE.SRGBColorSpace
+
+        // !!! Temp
+        const size = 25
+        for(const key in this.textures.blocs)
+        {
+            const value = this.textures.blocs[key]
+
+            const repeatX = (size / 2)
+            const repeatY = (size / 2) / 3
+
+            const offsetX = - 0.75
+            const offsetY = -0.05
+
+            value.repeat.set(repeatX, repeatY)
+            value.wrapS = THREE.RepeatWrapping
+            value.wrapT = THREE.RepeatWrapping
+            value.offset.x = offsetX
+            value.offset.y = offsetY
+            value.needsUpdate = true
+        }
 
         const matteLacquerMaterial = new THREE.MeshStandardMaterial({
+            map: this.textures.blocs.color, // To remove
             color: 0x555555,
         })
-        this.allMaterials['matteLacquer'] = matteLacquerMaterial
+
+        const paintedOakMaterial = new THREE.MeshStandardMaterial({
+            map: this.textures.blocs.color,
+            color: 0x555555,
+        })
+
+        this.materials.blocs = {
+            'matteLacquer': matteLacquerMaterial,
+            'paintedOak': paintedOakMaterial
+        }
+
+        // Handles
+        const silverMaterial = new THREE.MeshStandardMaterial({
+            name: 'silver',
+            color: 0xC0C0C0,
+            metalness: 1,
+            roughness: 0.2
+        })
+        
+        const blackMatMaterial = new THREE.MeshStandardMaterial({
+            name: 'blackMat',
+            color: 0x000000,
+            roughness: 0.8
+        })
+
+        const blackBrushedMaterial = new THREE.MeshStandardMaterial({
+            name: 'blackBrushed',
+            color: 0x000000,
+            roughness: 0.5,
+            metalness: 0.8
+        })
+
+        const brassMaterial = new THREE.MeshStandardMaterial({
+            name: 'brass',
+            color: 0xC7A357,
+            metalness: 1,
+            roughness: 0.2
+        })
+
+        const brassBrushedMaterial = new THREE.MeshStandardMaterial({
+            name: 'brassBrushed',
+            color: 0xC7A357,
+            metalness: 1,
+            roughness: 0.4
+        })
+
+        this.materials.handles = {
+            'silver': silverMaterial,
+            'blackMat': blackMatMaterial,
+            'blackBrushed': blackBrushedMaterial,
+            'brass': brassMaterial,
+            'brassBrushed': brassBrushedMaterial
+        }
     }
 
     setBase()
@@ -303,7 +472,7 @@ export default class World
         const geometry = new THREE.PlaneGeometry(1, 1)
 
         // Add and options
-        this.floor = new THREE.Mesh(geometry, this.allMaterials['default'])
+        this.floor = new THREE.Mesh(geometry, this.materials.setup['default'])
         this.floor.rotation.x = - Math.PI * 0.5
         this.floor.receiveShadow = true
         this.scene.add(this.floor)
@@ -315,7 +484,7 @@ export default class World
             const geometry = new THREE.PlaneGeometry(1, this.wallsHeight)
 
             // Add and options
-            const wall = new THREE.Mesh(geometry, this.allMaterials['default'])
+            const wall = new THREE.Mesh(geometry, this.materials.setup['default'])
             wall.rotation.y = this.wallsRotation[key] * Math.PI
             wall.position.y = this.wallsHeight / 2
             wall.receiveShadow = true
@@ -359,7 +528,15 @@ export default class World
 
     applyScale()
     {
-        this.floor.material = this.allMaterials['floor']
+        this.floor.material = this.materials.room['floor']
+
+        // Walls
+        for(const key in this.walls)
+        {
+            const value = this.walls[key]
+
+            value.material = this.materials.room['walls']
+        }
 
         // this.setMatrix()
         // this.setGrid()
@@ -401,11 +578,12 @@ export default class World
                 if(child.isMesh) // child instanceof THREE.Mesh
                 {
                     child.castShadow = needShadow
+                    child.receiveShadow = needShadow
 
-                    if(child.userData.customisable)
-                    {
-                        child.material = this.allMaterials['matteLacquer']
-                    }
+                    const handleMaterial = this.materials.blocs['matteLacquer']
+                    const bodyMaterial = this.materials.setup['default']
+
+                    child.userData.customisable ? child.material = handleMaterial : child.material = bodyMaterial
                 }
             })
         }
@@ -442,7 +620,7 @@ export default class World
     {
         this.isOccupied = this.isHighlightOnOccupiedMatrixPos()
 
-        if (!this.isOccupied && !this.camera.orbitControlMove){ // To avoid placing bloc when mooving the camera
+        if (!this.isOccupied){
             for (const intersect of this.intersects){
                 if(intersect.object.name === 'floor'){
                     const blocClone = this.bloc.clone()
@@ -468,6 +646,15 @@ export default class World
     }
 
     // Handles
+    setCurrentHandle(type, position, material)
+    {
+        this.handle = {
+            model: this.models.handles[type].model,
+            position: position,
+            material: this.materials.handles[material]
+        }
+    }
+
     loadHandles()
     {
         const loadHandle = (handle, needShadow) =>
@@ -483,21 +670,12 @@ export default class World
                 if(child.isMesh) // child instanceof THREE.Mesh
                 {
                     child.castShadow = needShadow
-                    child.material = this.allMaterials['matteLacquer']
                 }
             })
         }
 
         for (const handle of this.handles) {
             loadHandle(handle.name, true)
-        }
-    }
-
-    setCurrentHandle(type, position)
-    {
-        this.handle = {
-            model: this.models.handles[type].model,
-            position: position
         }
     }
 
@@ -508,6 +686,7 @@ export default class World
             if(child.userData.handle) // handle here refer to the empty to position the handle
             {
                 const handleClone = this.handle.model.clone()
+                handleClone.children[0].material = this.handle.material
 
                 // Avoid handle being stretched
                 handleClone.scale.y = ((this.handle.model.scale.y / bloc.children[0].scale.y) / (this.handle.model.scale.y / bloc.userData.initialScale.y))
@@ -657,9 +836,9 @@ export default class World
 
                     this.isOccupied = this.isHighlightOnOccupiedMatrixPos()
                     if (this.isOccupied){
-                        this.allMaterials['highlight'].color.setHex(0xFF5555)
+                        this.materials.setup['highlight'].color.setHex(0xFF5555)
                     } else {
-                        this.allMaterials['highlight'].color.setHex(0xBBBBBB)
+                        this.materials.setup['highlight'].color.setHex(0xBBBBBB)
                     }
                 }
             }
@@ -707,7 +886,7 @@ export default class World
             highlightGeometry.setAttribute("position", new THREE.BufferAttribute(array, 3));
         }
 
-        this.highlightMesh = new THREE.Mesh(highlightGeometry, this.allMaterials['highlight'])
+        this.highlightMesh = new THREE.Mesh(highlightGeometry, this.materials.setup['highlight'])
 
         // this.highlightMesh.rotation.x = -Math.PI * 0.5
         this.highlightMesh.position.set(0, this.blocScale.y / 2, 0) // To avoid clipping at launch
@@ -717,7 +896,7 @@ export default class World
         this.mousePosition = new THREE.Vector2()
         this.raycaster = new THREE.Raycaster()
 
-        window.addEventListener('mouseup', (e) => { this.placeBloc(e) })
+        window.addEventListener('mouseup', (e) => (e.button === 0) && this.placeBloc(e))
         window.addEventListener('mousemove', (e) => { this.moveHighlight(e) })
         window.addEventListener('keydown', (e) =>
         {
@@ -725,146 +904,26 @@ export default class World
                 this.blocRotation = (this.blocRotation + 1) % 4
                 this.highlightMesh.rotation.y = this.blocRotation * (Math.PI / 2)
             }
+
+            // !!! to finish
+            // const isZPressed = (e.key === 'z' || e.key === 'Z')
+            // const isCtrlPressed = (e.ctrlKey || e.metaKey)
+            // if (isZPressed && isCtrlPressed) {
+            //     const keys = Object.keys(this.blocsPlaced)
+            //     const lastKey = keys[keys.length - 1];
+            //     this.scene.remove(this.blocsPlaced[lastKey])
+            //     delete this.blocsPlaced[lastKey]
+
+            //     this.updateBlocPosOnMatrix()
+            //         for (let columns = this.matrixBlocPosXStart; columns < this.matrixBlocPosXEnd; columns++) {
+            //             for (let rows = this.matrixBlocPosZStart; rows < this.matrixBlocPosZEnd; rows++) {
+            //                 this.matrix[columns][rows] = false
+            //             }
+            //         }
+            //     console.log(this.matrix)
+            //     console.log(this.blocsPlaced)
+            // }
         })
-    }
-
-
-
-
-    setFridge()
-    {
-        // Model
-        this.models.fridge = {}
-        this.models.fridge.model = this.resources.items.fridgeModel.scene
-
-        // Options
-        this.models.fridge.model.traverse((child) =>
-        {
-            if(child instanceof THREE.Mesh)
-            {
-                child.castShadow = true
-            }
-        })
-
-        // RetrieveElements
-        this.retrieveAllMaterials()
-        // this.retrieveHandlesPosRot() // Method 2
-
-        // Set to classic
-        this.setHandleByVisibility('classic')
-        // this.setHandleByIteration('classicHandle', 'chrome') // Method 2
-
-        // Add
-        this.scene.add(this.models.fridge.model)
-    }
-
-    retrieveAllMaterials()
-    {
-        this.models.fridge.model.traverse((child) =>
-        {
-            if(child.isMesh && child.material.isMeshStandardMaterial)
-            {
-                this.allMaterialsRetrieved.add(child.material)
-            }
-        })
-
-        this.allMaterialsRetrieved.forEach(material => {
-            this.allMaterials[material.name] = material
-        })
-    }
-
-    //--------------------------------------------------------------------------------//
-
-    /**
-     * Method 1
-     */
-
-    setHandleByVisibility(asset, material)
-    {
-        this.models.fridge.model.traverse((child) =>
-        {
-            // Set visibility of all customisable elements to false
-            if(child.userData.customisable)
-            {
-                child.visible = false
-            }
-
-            // Set visibility of the customisation we want to true and change the material if it's specified
-            if(child.userData[asset])
-            {
-                if(!this.defaultMaterial)
-                {
-                    this.defaultMaterial = child.material
-                }
-
-                child.visible = true
-                if(material){
-                    child.material = this.allMaterials[material]
-                }else{
-                    child.material = this.defaultMaterial
-                }
-            }
-        })
-    }
-
-    //--------------------------------------------------------------------------------//
-
-    /**
-     * Method 2
-     */
-
-    retrieveHandlesPosRot()
-    {
-        this.models.fridge.model.traverse((child) =>
-        {
-            if(child.userData['handlePosRot'])
-            {
-                this.handlesPosRot[child.name] = [child.position, child.rotation]         
-            }
-        })
-    }
-
-    setHandleByIteration(asset, material)
-    {
-        // Remove
-        for (const oldHandle of this.activeHandles) {
-            const parent = this.models.fridge.model.children.find(obj => obj.name === 'handlesPositions')
-            parent.remove(oldHandle)
-            oldHandle.geometry.dispose()
-            oldHandle.material.dispose()
-        }
-        this.activeHandles = []
-
-        this.models[asset] = {}
-        this.models[asset].model = this.resources.items[asset+'Model'].scene
-
-        for(const key in this.handlesPosRot)
-        {
-            const value = this.handlesPosRot[key]
-
-            // Model
-            const handle = this.models[asset].model.children[0].clone()
-            this.activeHandles.push(handle)
-
-            // Options
-            // handle.castShadow = true
-
-            // Material
-            if(!this.defaultMaterial)
-            {
-                this.defaultMaterial = handle.material
-            }
-
-            if(material){
-                handle.material = this.allMaterials[material]
-            }else{
-                handle.material = this.defaultMaterial
-            }
-
-            handle.position.set(value[0].x, value[0].y, value[0].z)
-            handle.rotation.x += value[1].x
-            this.models.fridge.model.children.find(obj => obj.name === 'handlesPositions').add(handle)
-        }
     }
 
     update()

@@ -46,11 +46,11 @@ export default class Environment
 
     setSunLight()
     {
-        this.sunLight = new THREE.DirectionalLight('#ffffff', 1.3)
+        this.sunLight = new THREE.DirectionalLight('#ffffff', 1.3) // !!! Optimise shadows
         this.sunLight.castShadow = true
         this.sunLight.shadow.camera.far = 15
         this.sunLight.shadow.mapSize.set(1024, 1024)
-        this.sunLight.shadow.normalBias = 0.05
+        this.sunLight.shadow.normalBias = 0.01
         this.sunLight.position.set(0.8, 2, - 1.25)
         this.scene.add(this.sunLight)
     }
@@ -63,7 +63,7 @@ export default class Environment
         this.environmentMap.texture.colorSpace = THREE.SRGBColorSpace
 
         this.scene.environment = this.environmentMap.texture
-        this.scene.background = this.environmentMap.texture
+        // this.scene.background = this.environmentMap.texture
 
         this.environmentMap.updateMaterials = () =>
         {

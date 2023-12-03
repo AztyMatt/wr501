@@ -17,35 +17,11 @@ export default class Camera
         this.setInstance()
         this.setOrbitControls()
 
-        this.orbitControlMove = false
-        this.hasOCStartedMooving = false
-        this.hasOCFinishedMooving = true
-
-        // Check if the orbit control is mooving or not
-        this.controls.addEventListener('start', () => {
-            this.orbitControlMove = false
-
-            this.hasOCStartedMooving = true
-            this.hasOCFinishedMooving = false
-            // console.log('START', 'hasStarted :', this.hasOCStartedMooving, 'isMoving :', this.orbitControlMove, 'hasFinished :', this.hasOCFinishedMooving)
-        })
-
-        this.controls.addEventListener('change', () => {
-            if(this.hasOCStartedMooving && !this.hasOCFinishedMooving)
-            {
-                this.orbitControlMove = true
-            }
-
-            // console.log('CHANGE', 'hasStarted :', this.hasOCStartedMooving, 'isMoving :', this.orbitControlMove, 'hasFinished :', this.hasOCFinishedMooving)
-        })
-
-        this.controls.addEventListener('end', () => {
-            this.hasOCStartedMooving = false
-            this.hasOCFinishedMooving = true
-
-            // console.log('END', 'hasStarted :', this.hasOCStartedMooving, 'isMoving :', this.orbitControlMove, 'hasFinished :', this.hasOCFinishedMooving)
-            // console.log('------------------------------------------------------------')
-        })
+        this.controls.mouseButtons = {
+            // LEFT: THREE.MOUSE.PAN,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE
+        }
     }
 
     setInstance()

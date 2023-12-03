@@ -69,9 +69,9 @@ export default[
 
 
     {
-        name: 'fridgeModel',
-        type: 'gltfModel',
-        path: 'models/fridge/fridge.gltf'
+        name: 'oakColorTexture',
+        type: 'texture',
+        path: '/textures/blocs/oak.jpg'
     },
 
 
@@ -85,12 +85,32 @@ export default[
         type: 'gltfModel',
         path: 'models/blocs/drawerX4.glb'
     },
+    {
+        name: 'drawerX3Model',
+        type: 'gltfModel',
+        path: 'models/blocs/drawerX3.glb'
+    },
+    {
+        name: 'drawerX2Model',
+        type: 'gltfModel',
+        path: 'models/blocs/drawerX2.glb'
+    },
 
 
     {
         name: 'anemoneModel',
         type: 'gltfModel',
         path: 'models/handles/anemone.glb'
+    },
+    {
+        name: 'cosmosLargeModel',
+        type: 'gltfModel',
+        path: 'models/handles/cosmosLarge.glb'
+    },
+    {
+        name: 'cosmosSmallModel',
+        type: 'gltfModel',
+        path: 'models/handles/cosmosSmall.glb'
     },
     {
         name: 'dahliaLargeModel',
@@ -103,26 +123,28 @@ export default[
         path: 'models/handles/freesia.glb'
     },
     {
+        name: 'irisLargeModel',
+        type: 'gltfModel',
+        path: 'models/handles/irisLarge.glb'
+    },
+    {
+        name: 'irisMediumModel',
+        type: 'gltfModel',
+        path: 'models/handles/irisMedium.glb'
+    },
+    {
+        name: 'irisXLModel',
+        type: 'gltfModel',
+        path: 'models/handles/irisXL.glb'
+    },
+    {
         name: 'lilaModel',
         type: 'gltfModel',
         path: 'models/handles/lila.glb'
     },
-
-
-    // Method 2
-    // {
-    //     name: 'fridgeForHandleModel',
-    //     type: 'gltfModel',
-    //     path: 'models/fridge/fridgeForHandle.gltf'
-    // },
-    // {
-    //     name: 'classicHandleModel',
-    //     type: 'gltfModel',
-    //     path: 'models/fridge/classicHandle.gltf'
-    // },
-    // {
-    //     name: 'customHandleModel',
-    //     type: 'gltfModel',
-    //     path: 'models/fridge/customHandle.gltf'
-    // }
+    {
+        name: 'mimosaModel',
+        type: 'gltfModel',
+        path: 'models/handles/mimosa.glb'
+    }
 ]
