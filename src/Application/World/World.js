@@ -18,16 +18,13 @@ export default class World
             blocs: {},
             handles: {}
         }
-        this.animation = {}
 
         // Materials
-        this.materialsRetrieved = new Set()
         this.materials = {}
-        this.defaultMaterial = null
 
         // Kitchen sizes
-        this.x = 4
-        this.z = 3
+        this.x = 4 // !!! to rename
+        this.z = 3 // !!! to rename
 
         // UVs
         this.uvSize = 0.5
@@ -45,7 +42,7 @@ export default class World
 
         // Grid and highlight
         this.zFightingAvoider = 0.001 // 0.001 to avoid z-fighting
-        this.cellSize = 0.05
+        this.cellSize = 0.025
         this.highlightMesh = {}
         this.intersects = {}
 
@@ -54,11 +51,15 @@ export default class World
         this.isOccupied = false
 
         // Bloc
-        this.bloc = null
+        this.bloc = {}
         this.blocScale = new THREE.Vector3(1, 1, 1)
         this.blocScaleRef = new THREE.Vector3()
         this.blocPreviousScale = new THREE.Vector3()
         this.blocRotation = 0
+
+        this.workplan = {}
+        this.workplanBlocMaxHeight = 100
+        this.workplansPlaced = []
 
         this.blocs = [
             {
@@ -73,8 +74,18 @@ export default class World
             {
                 name: 'drawerX2'
             },
+            {
+                name: 'inferiorDoor'
+            },
+            // {
+            //     name: 'cornerDoor'
+            // },
+            {
+                name: 'essentialDoor'
+            },
         ]
         this.blocsPlaced = []
+        this.blocsMaterial = 'matteLacquer'
 
         // Handle
         this.handles = [
@@ -98,16 +109,16 @@ export default class World
                 position: 'right', // !!! Set handles on drawers to the middle instead of the right side
                 materialsNames: ['silver', 'blackMat', 'brassBrushed']
             },
-            // {
-            //     name: 'dahliaSmall', // !!!
-            //     position: 'edge top',
-            //     materialsNames: ['silver', 'blackMat', 'brass']
-            // },
-            // {
-            //     name: 'dahliaMedium', // !!!
-            //     position: 'edge top',
-            //     materialsNames: ['silver', 'blackMat', 'brass']
-            // },
+            {
+                name: 'dahliaSmall',
+                position: 'edge top',
+                materialsNames: ['silver', 'blackMat', 'brass']
+            },
+            {
+                name: 'dahliaMedium',
+                position: 'edge top',
+                materialsNames: ['silver', 'blackMat', 'brass']
+            },
             {
                 name: 'dahliaLarge',
                 position: 'edge top',
@@ -123,11 +134,11 @@ export default class World
                 position: 'top',
                 materialsNames: ['silver', 'blackMat', 'brass']
             },
-            // {
-            //     name: 'irisSmall', // !!!
-            //     position: 'edge top',
-            //     materialsNames: ['silver', 'blackBrushed']
-            // },
+            {
+                name: 'irisSmall', // !!!
+                position: 'edge top',
+                materialsNames: ['silver', 'blackBrushed']
+            },
             {
                 name: 'irisMedium',
                 position: 'edge top',
@@ -144,96 +155,113 @@ export default class World
                 materialsNames: ['silver', 'blackBrushed']
             },
         ]
-        this.handle = {}
 
         this.resources.on('readyEvent', () =>
         {
             this.setMaterials()
             this.setBase()
+
             this.loadBlocs()
             this.loadHandles()
-            this.setMatrix()
-            this.setGrid()
-            this.setCurrentBloc(this.blocs[0].name)
-            this.setCurrentHandle(this.handles[0].name, this.handles[0].position, this.handles[0].materialsNames[0])
-            this.setBloc(1, 1, 1)
+
+            // this.setMatrix()
+            // this.setGrid()
+            // this.setCurrentBloc(this.blocs[0].name)
+            // this.setCurrentHandle(this.handles[0].name, this.handles[0].position, this.handles[0].materialsNames[0])
+            // this.setBloc(1, 1, 1)
+            // this.setWorkplan(0.025)
+            
+            // this.setCommands()
             this.environment = new Environment()
 
             // Debug
             if(this.debug.active)
             {
+                const debugObject = {}
+
                 // Floor
-                this.debugFloor = this.debug.ui.addFolder('floor')
-                const debugObjectFloor = {
+                const debugFloor = this.debug.ui.addFolder('floor')
+                debugObject.floor = {
                     scaleX: this.x,
                     scaleZ: this.z,
-                    applyScale: () => {this.applyScale()}
+                    applyScale: () => this.applyScale()
                 }
 
-                this.debugFloor.add(debugObjectFloor, 'scaleX', 0.5, 10, 0.1).name('Scale X').onChange((value) => {
+                debugFloor.add(debugObject.floor, 'scaleX', 0.5, 10, 0.1).name('Scale X').onChange((value) => {
                     this.updateScale('x', value)
                 })
-                this.debugFloor.add(debugObjectFloor, 'scaleZ', 0.5, 10, 0.1).name('Scale Z').onChange((value) => {
+                debugFloor.add(debugObject.floor, 'scaleZ', 0.5, 10, 0.1).name('Scale Z').onChange((value) => {
                     this.updateScale('z', value)
                 })
-                this.debugFloor.add(debugObjectFloor, 'applyScale').name('Appliquer la taille')
+                debugFloor.add(debugObject.floor, 'applyScale').name('Apply scale')
 
 
 
                 // Blocs
-                this.debugBlocs = this.debug.ui.addFolder('blocs') //  !!! create a const instead of a this.
-                const debugObjectBlocs = {}
-
-                this.debugBlocs.blocLateralDoor = this.debugBlocs.addFolder('lateralDoor')
-                debugObjectBlocs.heights = [40, 60, 80, 100, 120, 140, 160, 180, 200]  // !!! function(name of the bloc, values used, (width or depth) -> if) ?
-                for (const height of debugObjectBlocs.heights) {
-                    debugObjectBlocs[`lateralDoor40x${height}`] = () => {
-                        this.setCurrentBloc('lateralDoor')
-
-                        const conversion = ((height / 100) / this.blocPreviousScale.y)
-                        this.setBloc(1, conversion, 1)
-                    }
-                    this.debugBlocs.blocLateralDoor.add(debugObjectBlocs, `lateralDoor40x${height}`).name(`Bloc 40x${height}`)
+                const debugBlocs = this.debug.ui.addFolder('blocs') //  !!! create a const instead of a this.
+                debugObject.blocs = {
+                    models: {},
+                    materials: {
+                        currentMaterial: {},
+                        colors: {}
+                    },
+                    workplan: {},
                 }
 
-                this.debugBlocs.blocDrawerX4 = this.debugBlocs.addFolder('drawerX4') // !!! same function for X4, X3, X2 ?
-                debugObjectBlocs.widths = [40, 60, 80]  // !!! function ?
-                for (const width of debugObjectBlocs.widths) {
-                    debugObjectBlocs[`drawerX4${width}x60`] = () => {
-                        this.setCurrentBloc('drawerX4')
+                debugBlocs.models = debugBlocs.addFolder('models')
+                const createDebugUiForBlocs = (blocName, axis, dynamicDimension, staticDimension) => {
+                    debugBlocs.models[blocName] = debugBlocs.models.addFolder(blocName)
+                    debugObject.blocs.models[blocName] = {}
 
-                        const conversion = ((width / 100) / this.blocPreviousScale.z)
-                        this.setBloc(1, 1, conversion)
+                    for (const value of dynamicDimension) {
+                        const dimensionsName = 
+                        axis === 'y'
+                            ? `${value}x${staticDimension}`
+                            : `${staticDimension}x${value}`
+
+                        debugObject.blocs.models[blocName][dimensionsName] = () => {
+                            this.setCurrentBloc(blocName)
+
+                            const invertAxis = axis === 'y' ? 'z' : 'y'
+
+                            const dynamicConversion = ((value / 100) / this.blocPreviousScale[axis])
+                            const staticConversion = ((staticDimension / 100) / this.blocPreviousScale[invertAxis])
+
+                            axis === 'y'
+                                ? this.setBloc(1, dynamicConversion, staticConversion)
+                                : this.setBloc(1, staticConversion, dynamicConversion)
+                        }
+                        debugBlocs.models[blocName].add(debugObject.blocs.models[blocName], dimensionsName).name(dimensionsName)
                     }
-                    this.debugBlocs.blocDrawerX4.add(debugObjectBlocs, `drawerX4${width}x60`).name(`Bloc ${width}x60`)
+                }
+                
+                const blocLateralDoorDimensions = [40, 60, 80, 100, 120, 140, 160, 180, 200]
+                const blocDrawerDimensions = [40, 60, 80]
+
+                createDebugUiForBlocs('lateralDoor', 'y', blocLateralDoorDimensions, 40)
+                createDebugUiForBlocs('lateralDoor', 'y', blocLateralDoorDimensions, 60)
+                createDebugUiForBlocs('inferiorDoor', 'z', [45, 60], 80)
+                createDebugUiForBlocs('drawerX4', 'z', blocDrawerDimensions, 60)
+                createDebugUiForBlocs('drawerX3', 'z', blocDrawerDimensions, 60)
+                createDebugUiForBlocs('drawerX2', 'z', blocDrawerDimensions, 80)
+                createDebugUiForBlocs('essentialDoor', 'y', [80], 20)
+                createDebugUiForBlocs('essentialDoor', 'y', [60, 80], 30)
+                // !!! Add other blocs
+
+                const materialOptions = ['matteLacquer', 'paintedOak', 'naturalOak', 'mochaOak', 'naturalWalnut']
+
+                debugBlocs.materials = debugBlocs.addFolder('materials');
+                debugBlocs.materials.currentMaterial = debugBlocs.materials.addFolder('current material')
+                for (const material of materialOptions) {
+                    debugObject.blocs.materials.currentMaterial[material] = () => {
+                        this.changeBlocsMaterial(material)
+                    }
+
+                    debugBlocs.materials.currentMaterial.add(debugObject.blocs.materials.currentMaterial, material).name(material)
                 }
 
-                this.debugBlocs.blocDrawerX3 = this.debugBlocs.addFolder('drawerX3')
-                debugObjectBlocs.widths = [40, 60, 80]
-                for (const width of debugObjectBlocs.widths) {
-                    debugObjectBlocs[`drawerX3${width}x60`] = () => {
-                        this.setCurrentBloc('drawerX3')
-
-                        const conversion = ((width / 100) / this.blocPreviousScale.z)
-                        this.setBloc(1, 1, conversion)
-                    }
-                    this.debugBlocs.blocDrawerX3.add(debugObjectBlocs, `drawerX3${width}x60`).name(`Bloc ${width}x60`)
-                }
-
-                this.debugBlocs.blocDrawerX2 = this.debugBlocs.addFolder('drawerX2')
-                debugObjectBlocs.widths = [40, 60, 80]
-                for (const width of debugObjectBlocs.widths) {
-                    debugObjectBlocs[`drawerX2${width}x60`] = () => {
-                        this.setCurrentBloc('drawerX2')
-
-                        const conversion = ((width / 100) / this.blocPreviousScale.z)
-                        this.setBloc(1, 1, conversion)
-                    }
-                    this.debugBlocs.blocDrawerX2.add(debugObjectBlocs, `drawerX2${width}x60`).name(`Bloc ${width}x60`)
-                }
-
-                this.debugBlocs.matteLacquerColors = this.debugBlocs.addFolder('matte lacquer colors')
-                debugObjectBlocs.matteLacquerColors = {
+                debugBlocs.materials.colors = debugBlocs.materials.addFolder('color')
+                const colors = {
                     'Terracota': 0xD1654E,
                     'Ivoire': 0xF0EDE1,
                     'Biege Poudré': 0xE3D3B5,
@@ -251,37 +279,43 @@ export default class World
                     'Acajou': 0x7D4031,
                     'Gris': 0x858583
                 }
-                for(const key in debugObjectBlocs.matteLacquerColors)
+                for(const key in colors)
                 {
-                    const value = debugObjectBlocs.matteLacquerColors[key]
-                    debugObjectBlocs[`${key}`] = () => {
+                    const value = colors[key]
+                    debugObject.blocs.materials.colors[`${key}`] = () => {
                         this.materials.blocs['matteLacquer'].color.set(value)
+                        this.materials.blocs['paintedOak'].color.set(value)
                     }
 
-                    this.debugBlocs.matteLacquerColors.add(debugObjectBlocs, `${key}`).name(`${key}`)
+                    debugBlocs.materials.colors.add(debugObject.blocs.materials.colors, `${key}`).name(`${key}`)
                 }
 
+                debugBlocs.workplan = debugBlocs.addFolder('workplan')
+                debugObject.blocs.workplan = {
+                    changeWorkplanVisibility: () => {
+                        this.changeWorkplanVisibility()
+                    }
+                }
+                debugBlocs.workplan.add(debugObject.blocs.workplan, 'changeWorkplanVisibility').name('toggle workplan visibility')
 
 
                 // Handles
-
-                // Exception: 
-                // Iris = blackBrushed / no brass
-                // Anemone = brassBrushed
-
-                this.debugHandles = this.debug.ui.addFolder('handles')
-                const debugObjectHandles = {}
+                const debugHandles = this.debug.ui.addFolder('handles')
+                debugObject.handles = {
+                    models: {}
+                }
 
                 for (const handle of this.handles) {
-                    this.debugHandles[handle.name] = this.debugHandles.addFolder(handle.name)
+                    debugHandles[handle.name] = debugHandles.addFolder(handle.name)
+                    debugObject.handles.models[handle.name] = {}
 
                     for (const materialName of handle.materialsNames) {
-                        debugObjectHandles[`changeTo${handle.name}-${materialName}`] = () => {
+                        debugObject.handles.models[handle.name][materialName] = () => {
                             this.setCurrentHandle(handle.name, handle.position, materialName)
                             this.removeHandles()
                             this.placeHandles()
                         }
-                        this.debugHandles[handle.name].add(debugObjectHandles, `changeTo${handle.name}-${materialName}`).name(`${handle.name} color ${materialName}`)
+                        debugHandles[handle.name].add(debugObject.handles.models[handle.name], materialName).name(materialName)
                     }
                 }
             }
@@ -307,17 +341,17 @@ export default class World
         }
         this.textures.floor.color.colorSpace = THREE.SRGBColorSpace
 
-        for(const key in this.textures.floor)
-        {
-            const value = this.textures.floor[key]
+        // for(const key in this.textures.floor)
+        // {
+        //     const value = this.textures.floor[key]
 
-            value.repeat.set(this.x * this.uvSize, this.z * this.uvSize)
-            value.wrapS = THREE.RepeatWrapping
-            value.wrapT = THREE.RepeatWrapping
-            value.offset.x = 0.5 - (this.x * this.uvSize / 2)
-            value.offset.z = 0.5 - (this.z * this.uvSize / 2)
-            value.needsUpdate = true
-        }
+        //     value.repeat.set(this.x * this.uvSize, this.z * this.uvSize)
+        //     value.wrapS = THREE.RepeatWrapping
+        //     value.wrapT = THREE.RepeatWrapping
+        //     value.offset.x = 0.5 - (this.x * this.uvSize / 2)
+        //     value.offset.z = 0.5 - (this.z * this.uvSize / 2)
+        //     value.needsUpdate = true
+        // }
 
         const floorMaterial = new THREE.MeshStandardMaterial({
             map: this.textures.floor.color,
@@ -336,17 +370,17 @@ export default class World
         }
         this.textures.walls.color.colorSpace = THREE.SRGBColorSpace
 
-        for(const key in this.textures.walls)
-        {
-            const value = this.textures.walls[key]
+        // for(const key in this.textures.walls)
+        // {
+        //     const value = this.textures.walls[key]
 
-            value.repeat.set(this.x * this.uvSize, this.z * this.uvSize)
-            value.wrapS = THREE.RepeatWrapping
-            value.wrapT = THREE.RepeatWrapping
-            value.offset.x = (this.x * this.uvSize / 2)
-            value.offset.z = (this.z * this.uvSize / 2)
-            value.needsUpdate = true
-        }
+        //     value.repeat.set(this.x * this.uvSize, this.z * this.uvSize)
+        //     value.wrapS = THREE.RepeatWrapping
+        //     value.wrapT = THREE.RepeatWrapping
+        //     value.offset.x = (this.x * this.uvSize / 2)
+        //     value.offset.z = (this.z * this.uvSize / 2)
+        //     value.needsUpdate = true
+        // }
 
         const wallsMaterial = new THREE.MeshStandardMaterial({
             map: this.textures.walls.color,
@@ -380,43 +414,47 @@ export default class World
 
         // Blocs
         this.textures.blocs = {
-            color: this.resources.items.oakColorTexture
+            colorOak: this.resources.items.oakColorTexture,
+            colorMochaOak: this.resources.items.mochaOakColorTexture,
+            colorWalnut: this.resources.items.walnutColorTexture,
         }
-        this.textures.blocs.color.colorSpace = THREE.SRGBColorSpace
 
-        // !!! Temp
-        const size = 25
-        for(const key in this.textures.blocs)
-        {
+        for (const key in this.textures.blocs) {
             const value = this.textures.blocs[key]
-
-            const repeatX = (size / 2)
-            const repeatY = (size / 2) / 3
-
-            const offsetX = - 0.75
-            const offsetY = -0.05
-
-            value.repeat.set(repeatX, repeatY)
+            value.colorSpace = THREE.SRGBColorSpace
+        
             value.wrapS = THREE.RepeatWrapping
             value.wrapT = THREE.RepeatWrapping
-            value.offset.x = offsetX
-            value.offset.y = offsetY
             value.needsUpdate = true
         }
 
         const matteLacquerMaterial = new THREE.MeshStandardMaterial({
-            map: this.textures.blocs.color, // To remove
             color: 0x555555,
         })
 
         const paintedOakMaterial = new THREE.MeshStandardMaterial({
-            map: this.textures.blocs.color,
+            map: this.textures.blocs.colorOak,
             color: 0x555555,
+        })
+
+        const naturalOakMaterial = new THREE.MeshStandardMaterial({
+            map: this.textures.blocs.colorOak,
+        })
+
+        const mochaOakMaterial = new THREE.MeshStandardMaterial({
+            map: this.textures.blocs.colorMochaOak,
+        })
+
+        const naturalWalnutMaterial = new THREE.MeshStandardMaterial({
+            map: this.textures.blocs.colorWalnut,
         })
 
         this.materials.blocs = {
             'matteLacquer': matteLacquerMaterial,
-            'paintedOak': paintedOakMaterial
+            'paintedOak': paintedOakMaterial,
+            'naturalOak': naturalOakMaterial,
+            'mochaOak': mochaOakMaterial,
+            'naturalWalnut': naturalWalnutMaterial
         }
 
         // Handles
@@ -538,9 +576,38 @@ export default class World
             value.material = this.materials.room['walls']
         }
 
-        // this.setMatrix()
-        // this.setGrid()
-        // this.setBloc(0.4, 0.8, 0.5)
+        this.setMatrix()
+        this.setGrid()
+        this.setCurrentBloc(this.blocs[0].name)
+        this.setCurrentHandle(this.handles[0].name, this.handles[0].position, this.handles[0].materialsNames[0])
+        this.setBloc(1, 1, 1)
+        this.setWorkplan(0.025)
+
+        this.setCommands()
+
+        for(const key in this.textures.floor)
+        {
+            const value = this.textures.floor[key]
+
+            value.repeat.set(this.x * this.uvSize, this.z * this.uvSize)
+            value.wrapS = THREE.RepeatWrapping
+            value.wrapT = THREE.RepeatWrapping
+            value.offset.x = 0.5 - (this.x * this.uvSize / 2)
+            value.offset.z = 0.5 - (this.z * this.uvSize / 2)
+            value.needsUpdate = true
+        }
+
+        for(const key in this.textures.walls)
+        {
+            const value = this.textures.walls[key]
+
+            value.repeat.set(this.x * this.uvSize, this.z * this.uvSize)
+            value.wrapS = THREE.RepeatWrapping
+            value.wrapT = THREE.RepeatWrapping
+            value.offset.x = (this.x * this.uvSize / 2)
+            value.offset.z = (this.z * this.uvSize / 2)
+            value.needsUpdate = true
+        }
     }
 
     /**
@@ -571,6 +638,7 @@ export default class World
 
             const blocModel = this.models.blocs[bloc].model
             blocModel.userData.initialScale = blocModel.children[0].scale.clone()
+            blocModel.userData.bloc = bloc
         
             // Options
             blocModel.traverse((child) =>
@@ -579,11 +647,6 @@ export default class World
                 {
                     child.castShadow = needShadow
                     child.receiveShadow = needShadow
-
-                    const handleMaterial = this.materials.blocs['matteLacquer']
-                    const bodyMaterial = this.materials.setup['default']
-
-                    child.userData.customisable ? child.material = handleMaterial : child.material = bodyMaterial
                 }
             })
         }
@@ -593,12 +656,37 @@ export default class World
         }
     }
 
-    setCurrentBloc(type)
+    setCurrentBloc(model) // !!! material here ?
     {
-        this.bloc = this.models.blocs[type].model
-        this.blocScaleRef = this.bloc.children[0].scale
+        this.bloc = {
+            model: this.models.blocs[model].model,
+            // material: this.materials.blocs[material]
+        }
+        this.blocScaleRef = this.bloc.model.children[0].scale
         this.blocPreviousScale = this.blocScaleRef.clone()
-        this.blocInitialScale = this.models.blocs[type].model.userData.initialScale
+        this.blocInitialScale = this.models.blocs[model].model.userData.initialScale
+    }
+
+    changeBlocsMaterial(material) // !!! temp (better solution ?)
+    {
+        // set the material
+        this.blocsMaterial = material
+
+        // change the material on the already placed blocs
+        if (this.blocsPlaced)
+        {
+            for (const bloc of this.blocsPlaced)
+            {
+                bloc.traverse((child) =>
+                {
+                    if(child.isMesh && child.userData.customisable) // child instanceof THREE.Mesh
+                    { 
+                        const doorMaterial = this.materials.blocs[this.blocsMaterial] // -> this.blocMaterial
+                        child.material = doorMaterial
+                    }
+                })
+            }
+        }
     }
 
     setBloc(width = 1, height = 1, depth = 1)
@@ -612,7 +700,11 @@ export default class World
         this.blocScaleRef.set(this.blocScale.x, this.blocScale.y, this.blocScale.z)
 
         // Update the scale of the highlight
-        this.highlightMesh.scale.set(this.blocScale.x + this.zFightingAvoider, this.blocScale.y + this.zFightingAvoider, this.blocScale.z + this.zFightingAvoider)
+        this.highlightMesh.scale.set(
+            this.blocScale.x + this.zFightingAvoider,
+            this.blocScale.y + this.zFightingAvoider,
+            this.blocScale.z + this.zFightingAvoider
+        )
         this.highlightMesh.position.y = this.blocScale.y / 2
     }
 
@@ -623,18 +715,44 @@ export default class World
         if (!this.isOccupied){
             for (const intersect of this.intersects){
                 if(intersect.object.name === 'floor'){
-                    const blocClone = this.bloc.clone()
+                    const blocClone = this.bloc.model.clone()
+
                     blocClone.position.set(this.highlightMesh.position.x, 0, this.highlightMesh.position.z)
                     blocClone.rotation.y = this.highlightMesh.rotation.y
                     // blocClone.position.y = this.blocScale.y / 2
+                    blocClone.traverse((child) =>
+                    {
+                        if(child.isMesh) // child instanceof THREE.Mesh
+                        {
+                            const doorMaterial = this.materials.blocs[this.blocsMaterial]
+                            const bodyMaterial = this.materials.setup['default']
+        
+                            child.userData.customisable ? child.material = doorMaterial : child.material = bodyMaterial
+                        }
+                    })
+
                     this.scene.add(blocClone)
                     this.blocsPlaced.push(blocClone)
 
                     // Add a default handle
                     this.placeHandle(blocClone)
 
+                    // Add a workplan
+                    if (this.blocScale.y <= (this.workplanBlocMaxHeight / 100))
+                    {
+                        const workplanClone = this.workplan.clone()
+                        const workplanCloneHeight = this.workplan.userData.height
+
+                        workplanClone.scale.set(this.blocScale.x, workplanCloneHeight, this.blocScale.z)
+                        workplanClone.position.y = this.blocScale.y + (workplanCloneHeight / 2)
+
+                        blocClone.add(workplanClone)
+                        this.workplansPlaced.push(workplanClone)
+                        // console.log(this.workplansPlaced)
+                    }
+
                     // Assign the width and depth of the bloc to the matrix
-                    this.updateBlocPosOnMatrix()
+                    this.updateBlocPosRotOnMatrix(this.highlightMesh)
                     for (let columns = this.matrixBlocPosXStart; columns < this.matrixBlocPosXEnd; columns++) {
                         for (let rows = this.matrixBlocPosZStart; rows < this.matrixBlocPosZEnd; rows++) {
                             this.matrix[columns][rows] = true
@@ -645,11 +763,28 @@ export default class World
         }
     }
 
+    // Workplan
+    setWorkplan(height)
+    {
+        const workplanGeometry  = new THREE.BoxGeometry(1, 1, 1)
+        this.workplan = new THREE.Mesh(workplanGeometry, this.materials.blocs['matteLacquer'])
+
+        this.workplan.userData.height = height
+    }
+
+    changeWorkplanVisibility()
+    {
+        for (const workplan of this.workplansPlaced)
+        {
+            workplan.visible = !workplan.visible // !!! Determinate if the workplan have is own material, and only change the visibility of it
+        }
+    }
+
     // Handles
-    setCurrentHandle(type, position, material)
+    setCurrentHandle(model, position, material)
     {
         this.handle = {
-            model: this.models.handles[type].model,
+            model: this.models.handles[model].model,
             position: position,
             material: this.materials.handles[material]
         }
@@ -681,41 +816,50 @@ export default class World
 
     placeHandle(bloc)
     {
-        bloc.traverse((child) =>
+        if (bloc)
         {
-            if(child.userData.handle) // handle here refer to the empty to position the handle
+            bloc.traverse((child) =>
             {
-                const handleClone = this.handle.model.clone()
-                handleClone.children[0].material = this.handle.material
+                if(child.userData.handle) // handle here refer to the empty to position the handle
+                {
+                    const handleClone = this.handle.model.clone()
+                    handleClone.children[0].material = this.handle.material
 
-                // Avoid handle being stretched
-                handleClone.scale.y = ((this.handle.model.scale.y / bloc.children[0].scale.y) / (this.handle.model.scale.y / bloc.userData.initialScale.y))
-                handleClone.scale.z = ((this.handle.model.scale.z / bloc.children[0].scale.z) / (this.handle.model.scale.z / bloc.userData.initialScale.z))
+                    // Avoid handle being stretched
+                    handleClone.scale.y = ((this.handle.model.scale.y / bloc.children[0].scale.y) / (this.handle.model.scale.y / bloc.userData.initialScale.y))
+                    handleClone.scale.z = ((this.handle.model.scale.z / bloc.children[0].scale.z) / (this.handle.model.scale.z / bloc.userData.initialScale.z))
 
-                const positionMap = {
-                    'edge top': { axis: 'y', operator: 1, offset: 0 },
-                    'top': { axis: 'y', operator: 1, offset: - 0.025 },
-                    'edge right': { axis: 'z', operator: -1, offset: 0 },
-                    'right': { axis: 'z', operator: -1, offset: 0.02 }
-                }
-                child.add(handleClone)
+                    const positionMap = {
+                        'edge top': { axis: 'y', operator: 1, offset: 0 },
+                        'top': { axis: 'y', operator: 1, offset: - 0.025 },
+                        'edge right': { axis: 'z', operator: -1, offset: 0 },
+                        'right': { axis: 'z', operator: -1, offset: 0.02 },
 
-                const positionInfo = positionMap[this.handle.position]
-                const calcul = (
-                    (
-                        [positionInfo.operator] // To decide the side
+                        'middle' : { axis: 'z', operator: 0, offset: 0 }
+                    }
+                    child.add(handleClone)
 
-                        *
+                    const positionInfo = bloc.userData.bloc.startsWith('drawer') || bloc.userData.bloc.startsWith('essential') // !!! Not clean !
+                        && this.handle.position === 'right'
+                            ? positionMap['middle'] // To avoid small hadles being on the ride side even on drawers
+                            : positionMap[this.handle.position]
 
-                        ((bloc.userData.initialScale[positionInfo.axis] * child.parent.scale[positionInfo.axis]) / 2) // To get the middle of the drawer
+                    const calcul = (
+                        (
+                            [positionInfo.operator] // To decide the side
+
+                            *
+
+                            ((bloc.userData.initialScale[positionInfo.axis] * child.parent.scale[positionInfo.axis]) / 2) // To get the middle of the drawer
+                        )
+
+                        + [positionInfo.offset] / bloc.children[0].scale[positionInfo.axis] // to set the offset
                     )
 
-                    + [positionInfo.offset] / bloc.children[0].scale[positionInfo.axis] // to set the offset
-                )
-
-                handleClone.position[positionInfo.axis] = calcul
-            }
-        })
+                    handleClone.position[positionInfo.axis] = calcul
+                }
+            })
+        }
     }
 
     placeHandles()
@@ -728,56 +872,68 @@ export default class World
 
     removeHandles()
     {
+        console.log(this.blocsPlaced)
         for (const bloc of this.blocsPlaced)
         {
-            bloc.traverse((child) =>
+            if(bloc)
             {
-                if(child.userData.handle) // handle here refer to the empty to position the handle
+                bloc.traverse((child) =>
                 {
-                    const handle = child.children[0]
-                    child.remove(handle)
-        
-                    // Dispose of the geometry and materials of the handle to free up memory, although their strangely still be visible in a console.log
-                    handle.traverse((child) => 
+                    if(child.userData.handle) // handle here refer to the empty to position the handle
                     {
-                        if(child instanceof THREE.Mesh)
+                        const handle = child.children[0]
+            
+                        if(handle)
                         {
-                            child.geometry.dispose()
-
-                            // Loop through the material properties
-                            for(const key in child.material)
-                            {
-                                const value = child.material[key]
-
-                                // Test if there is a dispose function
-                                if(value && typeof value.dispose === 'function')
-                                {
-                                    value.dispose()
-                                }
-                            }
+                            this.delete3DObject(handle)
+                            child.remove(handle)
                         }
-                    })
-                }
-            })
+                    }
+                })
+            }
         }
     }
 
+    // All 3D models
+    delete3DObject(object) // Dispose of the geometry and materials of the handle to free up memory, although their strangely still be visible in a console.log
+    {
+        object.traverse((child) => 
+        {
+            if(child instanceof THREE.Mesh)
+            {
+                child.geometry.dispose()
+
+                // Loop through the material properties
+                for(const key in child.material)
+                {
+                    const value = child.material[key]
+
+                    // Test if there is a dispose function
+                    if(value && typeof value.dispose === 'function')
+                    {
+                        value.dispose()
+                    }
+                }
+            }
+        })
+    }
+
     // Updates
-    updateMatrixSpace()
+    updateMatrixSpace(target)
     {
         this.matrixHalfWidth = (this.x / (2 * this.cellSize))
         this.matrixHalfDepth = (this.z / (2 * this.cellSize))
 
-        this.matrixPosX = Number(((this.highlightMesh.position.x / this.cellSize) + this.matrixHalfWidth).toFixed(2)) // 36 a -36, 40
-        this.matrixPosZ = Number(((this.highlightMesh.position.z / this.cellSize) + this.matrixHalfDepth).toFixed(2))
+        this.matrixPosX = Number(((target.position.x / this.cellSize) + this.matrixHalfWidth).toFixed(2)) // 36 a -36, 40
+        this.matrixPosZ = Number(((target.position.z / this.cellSize) + this.matrixHalfDepth).toFixed(2))
 
         this.matrixBlocWidth = ((this.blocScale.x / this.cellSize) / 2) // 4
         this.matrixBlocDepth = ((this.blocScale.z / this.cellSize) / 2)
     }
 
-    updateBlocPosOnMatrix()
+    updateBlocPosRotOnMatrix(target)
     {
-        this.updateMatrixSpace()
+        this.updateMatrixSpace(target)
 
         if (this.blocRotation % 2 === 0)
         {
@@ -795,9 +951,9 @@ export default class World
         }
     }
 
-    updateHighlightRestriction()
+    updateHighlightRestriction(target)
     {
-        this.updateMatrixSpace()
+        this.updateMatrixSpace(target)
         
         if (this.blocRotation % 2 === 0)
         {
@@ -822,7 +978,7 @@ export default class World
 
         for (const intersect of this.intersects) {
             if (intersect.object.name === 'floor') { // !!! Avoid placing bloc when aiming the wall -> problem
-                this.updateHighlightRestriction()
+                this.updateHighlightRestriction(this.highlightMesh)
 
                 const highlightPosX = Math.floor(intersect.point.x / this.cellSize + (0.5 / 2)) // -40 a 40
                 const highlightPosZ = Math.floor(intersect.point.z / this.cellSize + (0.5 / 2))
@@ -835,11 +991,7 @@ export default class World
                     this.highlightMesh.position.set(cellX, this.blocScale.y / 2, cellZ)
 
                     this.isOccupied = this.isHighlightOnOccupiedMatrixPos()
-                    if (this.isOccupied){
-                        this.materials.setup['highlight'].color.setHex(0xFF5555)
-                    } else {
-                        this.materials.setup['highlight'].color.setHex(0xBBBBBB)
-                    }
+                    this.materials.setup['highlight'].color.setHex(this.isOccupied ? 0xFF5555 : 0xBBBBBB)
                 }
             }
         }
@@ -847,12 +999,13 @@ export default class World
 
     isHighlightOnOccupiedMatrixPos()
     {
-        this.updateBlocPosOnMatrix()
-
         let isOccupied = false
+
+        this.updateBlocPosRotOnMatrix(this.highlightMesh)
         for (let columns = this.matrixBlocPosXStart; columns < this.matrixBlocPosXEnd; columns++) {
             for (let rows = this.matrixBlocPosZStart; rows < this.matrixBlocPosZEnd; rows++) {
                 if (this.matrix[columns][rows]) {
+
                     isOccupied = true
                     break
                 }
@@ -895,34 +1048,77 @@ export default class World
         // Mouse
         this.mousePosition = new THREE.Vector2()
         this.raycaster = new THREE.Raycaster()
+    }
 
-        window.addEventListener('mouseup', (e) => (e.button === 0) && this.placeBloc(e))
-        window.addEventListener('mousemove', (e) => { this.moveHighlight(e) })
+    setCommands()
+    {
+        let onCanva = false
+
+        this.application.canvas.addEventListener('mouseup', (e) => {
+            if ((e.button === 0) && (this.highlightMesh.visible == true))
+            {
+                this.placeBloc()
+            }
+        })
+
+        this.application.canvas.addEventListener('mousemove', (e) => {
+            if (this.highlightMesh.visible == true)
+            {
+                this.moveHighlight(e)
+            }
+        })
+        this.application.canvas.addEventListener('mouseenter', (e) => {
+            this.highlightMesh.visible = true
+            onCanva = true
+        })
+        this.application.canvas.addEventListener('mouseleave', (e) => {
+            this.highlightMesh.visible = false
+            onCanva = false
+        })
+
         window.addEventListener('keydown', (e) =>
         {
-            if (e.key === 'r' || e.key === 'R') {
+            // R key -> rotate bloc
+            if ((e.key === 'r' || e.key === 'R') && onCanva) {
                 this.blocRotation = (this.blocRotation + 1) % 4
                 this.highlightMesh.rotation.y = this.blocRotation * (Math.PI / 2)
             }
 
-            // !!! to finish
-            // const isZPressed = (e.key === 'z' || e.key === 'Z')
-            // const isCtrlPressed = (e.ctrlKey || e.metaKey)
-            // if (isZPressed && isCtrlPressed) {
-            //     const keys = Object.keys(this.blocsPlaced)
-            //     const lastKey = keys[keys.length - 1];
-            //     this.scene.remove(this.blocsPlaced[lastKey])
-            //     delete this.blocsPlaced[lastKey]
+            // H key -> hide highlight
+            if ((e.key === 'h' || e.key === 'H') && onCanva) {
+                this.highlightMesh.visible = !this.highlightMesh.visible
+            }
 
-            //     this.updateBlocPosOnMatrix()
-            //         for (let columns = this.matrixBlocPosXStart; columns < this.matrixBlocPosXEnd; columns++) {
-            //             for (let rows = this.matrixBlocPosZStart; rows < this.matrixBlocPosZEnd; rows++) {
-            //                 this.matrix[columns][rows] = false
-            //             }
-            //         }
-            //     console.log(this.matrix)
-            //     console.log(this.blocsPlaced)
-            // }
+            // Ctrl + Z key -> Go back
+            const isZPressed = ((e.key === 'z' || e.key === 'Z') && onCanva)
+            const isCtrlPressed = ((e.ctrlKey || e.metaKey) && onCanva)
+            if (isZPressed && isCtrlPressed) {
+
+                const keys = Object.keys(this.blocsPlaced)
+                const lastKey = keys[keys.length - 1]
+
+                if (this.blocsPlaced[lastKey])
+                {
+                    // Clear matrix
+                    this.updateBlocPosRotOnMatrix(this.blocsPlaced[lastKey])
+                    for (let columns = this.matrixBlocPosXStart; columns < this.matrixBlocPosXEnd; columns++) {
+                        for (let rows = this.matrixBlocPosZStart; rows < this.matrixBlocPosZEnd; rows++) {
+                            this.matrix[columns][rows] = false
+                        }
+                    }
+
+                    // Clear memory
+                    this.delete3DObject(this.blocsPlaced[lastKey])
+
+                    // Clear array of placed blocs
+                    this.scene.remove(this.blocsPlaced[lastKey])
+
+                    const indexToRemove = keys.indexOf(lastKey)
+                    if (indexToRemove !== -1) {
+                        this.blocsPlaced.splice(indexToRemove, 1)
+                    }
+                }
+            }
         })
     }
 
@@ -930,4 +1126,4 @@ export default class World
     {
 
     }
-} 
+}

@@ -73,6 +73,16 @@ export default[
         type: 'texture',
         path: '/textures/blocs/oak.jpg'
     },
+    {
+        name: 'mochaOakColorTexture',
+        type: 'texture',
+        path: '/textures/blocs/mochaOak.jpg'
+    },
+    {
+        name: 'walnutColorTexture',
+        type: 'texture',
+        path: '/textures/blocs/walnut.jpg'
+    },
 
 
     {
@@ -95,6 +105,21 @@ export default[
         type: 'gltfModel',
         path: 'models/blocs/drawerX2.glb'
     },
+    {
+        name: 'essentialDoorModel',
+        type: 'gltfModel',
+        path: 'models/blocs/essentialDoor.glb'
+    },
+    // {
+    //     name: 'cornerDoorModel',
+    //     type: 'gltfModel',
+    //     path: 'models/blocs/cornerDoor.glb'
+    // },
+    {
+        name: 'inferiorDoorModel',
+        type: 'gltfModel',
+        path: 'models/blocs/inferiorDoor.glb'
+    },
 
 
     {
@@ -113,6 +138,16 @@ export default[
         path: 'models/handles/cosmosSmall.glb'
     },
     {
+        name: 'dahliaSmallModel',
+        type: 'gltfModel',
+        path: 'models/handles/dahliaSmall.glb'
+    },
+    {
+        name: 'dahliaMediumModel',
+        type: 'gltfModel',
+        path: 'models/handles/dahliaMedium.glb'
+    },
+    {
         name: 'dahliaLargeModel',
         type: 'gltfModel',
         path: 'models/handles/dahliaLarge.glb'
@@ -121,6 +156,11 @@ export default[
         name: 'freesiaModel',
         type: 'gltfModel',
         path: 'models/handles/freesia.glb'
+    },
+    {
+        name: 'irisSmallModel',
+        type: 'gltfModel',
+        path: 'models/handles/irisSmall.glb'
     },
     {
         name: 'irisLargeModel',

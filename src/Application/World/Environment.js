@@ -51,14 +51,14 @@ export default class Environment
         this.sunLight.shadow.camera.far = 15
         this.sunLight.shadow.mapSize.set(1024, 1024)
         this.sunLight.shadow.normalBias = 0.01
-        this.sunLight.position.set(0.8, 2, - 1.25)
+        this.sunLight.position.set(0.6, 2, - 1.25)
         this.scene.add(this.sunLight)
     }
 
     setEnvironmentMap()
     {
         this.environmentMap = {}
-        this.environmentMap.intensity = 0.4
+        this.environmentMap.intensity = 0.6
         this.environmentMap.texture = this.resources.items.environmentMapTexture
         this.environmentMap.texture.colorSpace = THREE.SRGBColorSpace
 

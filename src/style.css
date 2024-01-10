@@ -17,6 +17,7 @@ body
     top: 0;
     left: 0;
     outline: none;
+    cursor: grabbing; /* set to null on start and on grab when the highlight is visible */
 }
 
 .lil-gui { 
