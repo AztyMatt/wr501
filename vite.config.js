@@ -13,6 +13,7 @@ export default {
     {
         outDir: '../dist',
         emptyOutDir: true,
-        sourcemap: true
+        sourcemap: true,
+        chunkSizeWarningLimit: 1600
     }
 }
