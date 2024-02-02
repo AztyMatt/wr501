@@ -1,0 +1,25 @@
+*
+{
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body
+{
+    overflow: hidden;
+    background-color: black;
+}
+
+.webgl
+{
+    position: fixed;
+    top: 0;
+    left: 0;
+    outline: none;
+    cursor: grabbing; /* set to null on start and on grab when the highlight is visible */
+}
+
+.lil-gui { 
+	--folder-indent: 25px
+}
