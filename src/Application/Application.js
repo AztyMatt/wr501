@@ -8,7 +8,7 @@ import World from './World/World.js'
 import Debug from './Utils/Debug.js'
 
 // Stats.JS
-import Stats from 'stats.js'
+// import Stats from 'stats.js'
 
 let instance = null
 
@@ -23,9 +23,9 @@ export default class Application
         instance = this
 
         // Stats.JS
-        this.stats = new Stats()
-        this.stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
-        document.body.appendChild(this.stats.dom)
+        // this.stats = new Stats()
+        // this.stats.showPanel(0) // 0: fps, 1: ms, 2: mb, 3+: custom
+        // document.body.appendChild(this.stats.dom)
 
         // Global access
         window.application = this
@@ -64,7 +64,7 @@ export default class Application
 
     update()
     {
-        this.stats.begin() // Stats.JS
+        // this.stats.begin() // Stats.JS
 
         this.camera.update()
         if(this.world)
@@ -73,7 +73,7 @@ export default class Application
         }
         this.renderer.update()
 
-        this.stats.end() // Stats.JS
+        // this.stats.end() // Stats.JS
     }
 
     destroy()
